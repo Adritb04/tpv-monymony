@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api-client'
+import PurchasesModule from './PurchasesModule'
 
 // ── helpers ──────────────────────────────────────────────────────
 const fmt = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
@@ -120,7 +121,7 @@ export default function TPVApp() {
   const [typeFilter, setTypeFilter] = useState('')
 
   // Admin
-  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'integrity' | 'rgpd'>('products')
+  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'integrity' | 'rgpd' | 'compras'>('products')
   const [adminUsers, setAdminUsers] = useState<any[]>([])
   const [opLog, setOpLog]         = useState<any[]>([])
   const [integrity, setIntegrity] = useState<any>(null)
@@ -692,6 +693,7 @@ export default function TPVApp() {
               ['log','📜','Log operaciones'],
               ['integrity','🔒','Integridad'],
               ['rgpd','🛡️','RGPD'],
+              ['compras','🛒','Compras'],
             ] as [typeof adminTab, string, string][]).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => setAdminTab(tab)} style={{
                 width:'100%', padding:'8px 12px', borderRadius:6, border:'none',
@@ -875,6 +877,10 @@ export default function TPVApp() {
                   <button onClick={() => setRgpdModal(true)} style={S.btn('var(--amber)')}>📄 Ver política de privacidad</button>
                 </div>
               </div>
+            )}
+
+            {adminTab === 'compras' && (
+              <PurchasesModule token={token!} categories={categories} />
             )}
 
           </div>
