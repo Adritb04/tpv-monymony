@@ -5,10 +5,28 @@ import bcrypt from 'bcryptjs'
 import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET() {
-  const hash = await bcrypt.hash('admin123', 10)
-  await supabaseAdmin
+  // 1. Get user from DB
+  const { data: user, error } = await supabaseAdmin
     .from('users')
-    .update({ password_hash: hash })
+    .select('*')
     .eq('username', 'admin')
-  return NextResponse.json({ ok: true, hash })
+    .eq('active', true)
+    .single()
+
+  if (error || !user) return NextResponse.json({ step: 'db', error: error?.message || 'no user' })
+
+  // 2. Test bcrypt
+  const valid = await bcrypt.compare('admin123', user.password_hash)
+
+  // 3. Generate new hash for comparison
+  const newHash = await bcrypt.hash('admin123', 10)
+
+  return NextResponse.json({
+    step: 'bcrypt',
+    valid,
+    stored_hash: user.password_hash.substring(0, 20) + '...',
+    new_hash: newHash.substring(0, 20) + '...',
+    user_found: !!user,
+    active: user.active
+  })
 }
