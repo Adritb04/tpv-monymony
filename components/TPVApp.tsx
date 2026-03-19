@@ -45,54 +45,61 @@ const S = {
 function buildTicketHTML(s: any): string {
   const isRect = s.type === 'rectificativo'
   const bd = s.iva_breakdown || {}
+
+  // IVA lines
   let ivaLines = ''
   ;[4, 10, 21].forEach(r => {
     const g = bd[String(r)]
     if (g?.base > 0) ivaLines +=
-      `<div style="display:flex;justify-content:space-between;font-size:10px;color:#555"><span>Base IVA ${r}%</span><span>${fmtN(g.base)} €</span></div>` +
-      `<div style="display:flex;justify-content:space-between;font-size:10px;color:#555"><span>Cuota IVA ${r}%</span><span>${fmtN(g.iva)} €</span></div>`
+      `<div class="row small"><span>Base IVA ${r}%</span><span>${fmtN(g.base)} EUR</span></div>` +
+      `<div class="row small"><span>Cuota IVA ${r}%</span><span>${fmtN(g.iva)} EUR</span></div>`
   })
+
+  // REBU
   const rebu = bd.rebu
   const rebuNote = rebu?.total > 0 ? `
-    <div style="border-top:1px dashed #ccc;margin:4px 0"></div>
-    <div style="display:flex;justify-content:space-between;font-size:10px"><span>Artículos REBU</span><span>${fmtN(rebu.total)} €</span></div>
-    <div style="font-size:8px;color:#999">IVA incluido no deducible — Régimen Especial Bienes Usados (Art. 135-139 LIVA)</div>` : ''
-  const items = (s.items || []).map((i: any) => `
-    <div style="display:flex;justify-content:space-between;font-size:10px"><span>${i.emoji || ''} ${i.name} x${i.qty}</span><span>${fmtN(i.line_total || i.price * i.qty)} €</span></div>
-    <div style="font-size:8px;color:#999;padding-left:8px">${i.regime === 'rebu' ? 'REBU — IVA s/margen' : `IVA ${i.iva_rate}%`}</div>`).join('')
+    <div class="divider"></div>
+    <div class="row small"><span>Arts. REBU</span><span>${fmtN(rebu.total)} EUR</span></div>
+    <div class="small" style="font-size:8px">IVA incluido no deducible<br>Art. 135-139 LIVA</div>` : ''
+
+  // Items
+  const items = (s.items || []).map((i: any) => {
+    const lt = i.line_total || i.price * i.qty
+    return `<div class="row"><span>${i.name} x${i.qty}</span><span>${fmtN(lt)} EUR</span></div>` +
+      `<div class="small" style="padding-left:4px">${i.regime === 'rebu' ? 'REBU' : 'IVA ' + i.iva_rate + '%'}</div>`
+  }).join('')
+
   return `
-<div style="font-family:'Courier New',monospace;font-size:11px;color:#000;max-width:320px;margin:0 auto">
-  <div style="text-align:center;font-weight:700;font-size:13px">${s.razon_social || NEGOCIO.nombre}</div>
-  <div style="text-align:center">NIF: ${s.nif || NEGOCIO.nif}</div>
-  <div style="text-align:center">${NEGOCIO.direccion}, ${NEGOCIO.cp} ${NEGOCIO.localidad}</div>
-  <div style="text-align:center">Tel: ${NEGOCIO.telefono}</div>
-  <div style="border-top:1px dashed #999;margin:5px 0"></div>
-  ${isRect ? `<div style="text-align:center;color:red;font-weight:700">⚠️ FACTURA RECTIFICATIVA</div>
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:red"><span>Rectifica:</span><span>${s.rect_of}</span></div>
-  <div style="font-size:9px;color:red">Motivo: ${s.rect_reason}</div>
-  <div style="border-top:1px dashed #999;margin:5px 0"></div>` : ''}
-  <div style="display:flex;justify-content:space-between"><span style="font-weight:700">${isRect ? 'FACTURA RECTIFICATIVA' : 'FACTURA SIMPLIFICADA'}</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px"><span>Nº Ticket</span><span>${s.ticket_id}</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px"><span>Fecha</span><span>${s.date} ${s.time}</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:10px"><span>Cajero</span><span>${s.cashier_name}</span></div>
-  <div style="border-top:1px dashed #999;margin:5px 0"></div>
-  ${items}
-  <div style="border-top:1px dashed #999;margin:5px 0"></div>
-  ${ivaLines}
-  ${rebuNote}
-  ${ivaLines || rebuNote ? '<div style="border-top:1px dashed #999;margin:5px 0"></div>' : ''}
-  <div style="display:flex;justify-content:space-between;font-weight:700"><span>Base imponible</span><span>${fmtN(Math.abs(s.base))} €</span></div>
-  <div style="display:flex;justify-content:space-between;font-weight:700"><span>IVA total</span><span>${fmtN(Math.abs(s.iva_total))} €</span></div>
-  <div style="border-top:2px solid #000;margin:5px 0"></div>
-  <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:${isRect ? 'red' : '#000'}">
-    <span>TOTAL ${isRect ? 'RECTIFICADO' : ''}</span><span>${isRect ? '−' : ''}${fmtN(Math.abs(s.total))} €</span>
-  </div>
-  <div style="display:flex;justify-content:space-between;font-size:10px"><span>Método de pago</span><span>${s.pay === 'efectivo' ? 'Efectivo' : 'Tarjeta'}</span></div>
-  <div style="border-top:1px dashed #999;margin:5px 0"></div>
-  <div style="font-size:8px;color:#999">Software: ${s.sw_name} v${s.sw_version}</div>
-  <div style="font-size:7px;color:#bbb;word-break:break-all">Hash: ${(s.hash || '').substring(0, 40)}...</div>
-  <div style="text-align:center;margin-top:6px;font-size:10px">Gracias por su compra</div>
-</div>`
+<div class="center bold" style="font-size:13px">${s.razon_social || NEGOCIO.nombre}</div>
+<div class="center small">NIF: ${s.nif || NEGOCIO.nif}</div>
+<div class="center small">${NEGOCIO.direccion}</div>
+<div class="center small">${NEGOCIO.cp} ${NEGOCIO.localidad}</div>
+${NEGOCIO.telefono ? `<div class="center small">Tel: ${NEGOCIO.telefono}</div>` : ''}
+<div class="divider"></div>
+${isRect ? `<div class="center bold rect">** FACTURA RECTIFICATIVA **</div>
+<div class="row small rect"><span>Rectifica:</span><span>${s.rect_of}</span></div>
+<div class="small rect">Motivo: ${s.rect_reason}</div>
+<div class="divider"></div>` : ''}
+<div class="bold">${isRect ? 'FACTURA RECTIFICATIVA' : 'FACTURA SIMPLIFICADA'}</div>
+<div class="row small"><span>Ticket</span><span>${s.ticket_id}</span></div>
+<div class="row small"><span>Fecha</span><span>${s.date} ${s.time}</span></div>
+<div class="row small"><span>Cajero</span><span>${s.cashier_name}</span></div>
+<div class="divider"></div>
+${items}
+<div class="divider"></div>
+${ivaLines}
+${rebuNote}
+${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
+<div class="row"><span>Base imponible</span><span>${fmtN(Math.abs(s.base))} EUR</span></div>
+<div class="row"><span>IVA total</span><span>${fmtN(Math.abs(s.iva_total))} EUR</span></div>
+<div class="divider-solid"></div>
+<div class="row total">${isRect ? '** TOTAL RECTIFICADO **' : 'TOTAL'} ${isRect ? '-' : ''}${fmtN(Math.abs(s.total))} EUR</div>
+<div class="row small"><span>Pago</span><span>${s.pay === 'efectivo' ? 'Efectivo' : 'Tarjeta'}</span></div>
+<div class="divider"></div>
+<div class="small">${s.sw_name || 'TPV-Legal-ES'} v${s.sw_version || '1.0.0'}</div>
+<div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>
+<div class="center" style="margin-top:4px;font-size:10px">*** Gracias por su compra ***</div>
+<div style="height:20mm"></div>`
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -102,12 +109,12 @@ export default function TPVApp() {
   const [token, setToken] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
 
-useEffect(() => {
-  const check = () => setIsMobile(window.innerWidth < 768)
-  check()
-  window.addEventListener('resize', check)
-  return () => window.removeEventListener('resize', check)
-}, [])
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
   const [user, setUser]   = useState<any>(null)
   const [view, setView]   = useState<'tpv' | 'history' | 'admin'>('tpv')
   const [clock, setClock] = useState('')
@@ -314,6 +321,8 @@ useEffect(() => {
       setPayMethod('efectivo')
       loadProducts() // refresh stock
       setTicketModal(res.data)
+      // Imprimir automáticamente en impresora térmica
+      printTicket(res.data, true)
       showToast('Venta registrada ✓')
     } catch (e: any) {
       showToast(e.message, 'err')
@@ -397,14 +406,47 @@ useEffect(() => {
     (!search || p.name.toLowerCase().includes(search.toLowerCase()))
   )
 
-  // ── PRINT TICKET ──
-  const printTicket = (s: any) => {
-    const w = window.open('', '_blank', 'width=400,height=700')!
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket ${s.ticket_id}</title>
-    <style>body{margin:20px;background:#fff}@media print{body{margin:0}}</style></head>
-    <body>${buildTicketHTML(s)}</body></html>`)
+  // ── PRINT TICKET — optimizado para impresora térmica 80mm ──
+  const printTicket = (s: any, auto = false) => {
+    const w = window.open('', '_blank', 'width=302,height=600,menubar=no,toolbar=no,location=no,status=no')!
+    w.document.write(`<!DOCTYPE html><html><head>
+<meta charset="UTF-8">
+<title>Ticket ${s.ticket_id}</title>
+<style>
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 11px;
+    color: #000;
+    background: #fff;
+    width: 72mm;
+    padding: 4mm 2mm;
+  }
+  .center { text-align: center; }
+  .bold { font-weight: bold; }
+  .big { font-size: 14px; font-weight: bold; }
+  .small { font-size: 9px; }
+  .row { display: flex; justify-content: space-between; margin: 1px 0; }
+  .divider { border-top: 1px dashed #000; margin: 3px 0; }
+  .divider-solid { border-top: 1px solid #000; margin: 3px 0; }
+  .total { font-size: 15px; font-weight: bold; }
+  .hash { font-size: 7px; color: #666; word-break: break-all; margin-top: 2px; }
+  .rect { color: #000; }
+</style>
+</head><body>
+${buildTicketHTML(s)}
+</body></html>`)
     w.document.close()
-    setTimeout(() => { w.print(); w.close() }, 400)
+    // Si es impresión automática al cobrar, imprimir y cerrar sin interacción
+    if (auto) {
+      setTimeout(() => { w.print(); setTimeout(() => w.close(), 500) }, 350)
+    } else {
+      setTimeout(() => { w.print() }, 350)
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -415,8 +457,8 @@ useEffect(() => {
       <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
         background:'radial-gradient(ellipse 80% 80% at 20% 60%,#1a1060,var(--bg))' }}>
         <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
-          
-          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV MONY MONY</div>
+          <div style={{ fontSize:44, marginBottom:10 }}>🏪</div>
+          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV Legal ES</div>
           <div style={{ color:'var(--text2)', fontSize:12, marginBottom:24 }}>Introduce tus credenciales</div>
           <LoginForm onLogin={doLogin} loading={loading} />
           <div style={{ fontSize:10, color:'var(--text3)', marginTop:16 }}>
@@ -427,24 +469,29 @@ useEffect(() => {
       </div>
     )
   }
-if (isMobile) {
-  return (
-    <MobileTPV
-      token={token!}
-      user={user}
-      onLogout={doLogout}
-    />
-  )
-}
+
   // ═══════════════════════════════════════════════════════════════
-  // RENDER: APP
+  // RENDER: MOBILE
+  // ═══════════════════════════════════════════════════════════════
+  if (isMobile) {
+    return (
+      <MobileTPV
+        token={token!}
+        user={user}
+        onLogout={doLogout}
+      />
+    )
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER: APP (desktop)
   // ═══════════════════════════════════════════════════════════════
   return (
     <div style={S.app}>
       {/* TOPBAR */}
       <div style={S.topbar}>
-        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>MONY MONY</span>
-        
+        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>🏪 TPV</span>
+        <span style={{ ...S.badge('var(--green)','var(--green-dim)'), fontSize:9 }}>✓ Legal ES</span>
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
