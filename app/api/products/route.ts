@@ -9,12 +9,16 @@ export async function GET(req: NextRequest) {
   const auth = getAuthFromRequest(req)
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
-  const { data, error } = await supabaseAdmin
-    .from('products')
-    .select('*, category:categories(id, name, icon)')
-    .order('name')
+  const [{ data: products, error }, { data: categories }] = await Promise.all([
+    supabaseAdmin.from('products').select('*').order('name'),
+    supabaseAdmin.from('categories').select('id, name, icon'),
+  ])
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const catMap = Object.fromEntries((categories || []).map((c: any) => [c.id, c]))
+  const data = (products || []).map((p: any) => ({ ...p, category: catMap[p.category_id] || null }))
+
   return NextResponse.json({ data })
 }
 

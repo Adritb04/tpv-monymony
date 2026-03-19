@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api-client'
 import PurchasesModule from './PurchasesModule'
+import MobileTPV from './MobileTPV'
 
 // ── helpers ──────────────────────────────────────────────────────
 const fmt = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
@@ -99,6 +100,14 @@ function buildTicketHTML(s: any): string {
 // ═══════════════════════════════════════════════════════════════
 export default function TPVApp() {
   const [token, setToken] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+useEffect(() => {
+  const check = () => setIsMobile(window.innerWidth < 768)
+  check()
+  window.addEventListener('resize', check)
+  return () => window.removeEventListener('resize', check)
+}, [])
   const [user, setUser]   = useState<any>(null)
   const [view, setView]   = useState<'tpv' | 'history' | 'admin'>('tpv')
   const [clock, setClock] = useState('')
@@ -418,7 +427,15 @@ export default function TPVApp() {
       </div>
     )
   }
-
+if (isMobile) {
+  return (
+    <MobileTPV
+      token={token!}
+      user={user}
+      onLogout={doLogout}
+    />
+  )
+}
   // ═══════════════════════════════════════════════════════════════
   // RENDER: APP
   // ═══════════════════════════════════════════════════════════════
