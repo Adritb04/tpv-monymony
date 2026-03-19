@@ -3,18 +3,52 @@
 @tailwind utilities;
 
 :root {
-  --bg:#0d0d14;--s1:#16161f;--s2:#1e1e2a;--s3:#262633;
-  --border:#2e2e42;--border2:#3a3a52;
-  --accent:#7c6fff;--accent-dim:rgba(124,111,255,.15);
-  --green:#3ecf8e;--green-dim:rgba(62,207,142,.12);
-  --red:#f03e3e;--red-dim:rgba(240,62,62,.12);
-  --amber:#f59f00;--amber-dim:rgba(245,159,0,.12);
-  --teal:#20c997;--teal-dim:rgba(32,201,151,.12);
-  --text:#e2e2f0;--text2:#8888a8;--text3:#4a4a6a;
+  /* BASE CLARA */
+  --bg:#f5f7fb;                 /* fondo general claro */
+  --s1:#ffffff;                 /* cards */
+  --s2:#eef1f7;                 /* secciones */
+  --s3:#e4e8f2;                 /* hover suave */
+
+  /* BORDES */
+  --border:#d9deea;
+  --border2:#c7cde0;
+
+  /* MARCA */
+  --accent:#ce1317;             /* rojo principal */
+  --accent-dim:rgba(206,19,23,.08);
+
+  --blue:#597aa6;               /* azul */
+  --blue-dim:rgba(89,122,166,.1);
+
+  --white:#ffffff;
+
+  /* ESTADOS */
+  --green:#3ecf8e;
+  --green-dim:rgba(62,207,142,.12);
+
+  --red:#ce1317;
+  --red-dim:rgba(206,19,23,.08);
+
+  --amber:#f59f00;
+  --amber-dim:rgba(245,159,0,.12);
+
+  /* TEXTOS (CLAVE DEL PROBLEMA) */
+  --text:#1a1d2e;               /* negro suave → SIEMPRE principal */
+  --text2:#5c6a8a;              /* secundario */
+  --text3:#9caac6;              /* desactivado */
 }
+
 *{box-sizing:border-box;margin:0;padding:0}
 html,body,#__next{height:100%;overflow:hidden}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
+
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased
+}
+
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
