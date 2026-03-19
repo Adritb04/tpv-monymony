@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api-client'
 import PurchasesModule from './PurchasesModule'
 import MobileTPV from './MobileTPV'
+import { printTicketAuto } from '@/lib/thermal-print'
 
 // ── helpers ──────────────────────────────────────────────────────
 const fmt = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
@@ -406,8 +407,11 @@ export default function TPVApp() {
     (!search || p.name.toLowerCase().includes(search.toLowerCase()))
   )
 
-  // ── PRINT TICKET — optimizado para impresora térmica 80mm ──
+  // ── PRINT TICKET — QZ Tray si disponible, window.print() como fallback ──
   const printTicket = (s: any, auto = false) => {
+    printTicketAuto(s, buildTicketHTML, auto)
+  }
+  const _printTicket_legacy = (s: any, auto = false) => {
     const w = window.open('', '_blank', 'width=302,height=600,menubar=no,toolbar=no,location=no,status=no')!
     w.document.write(`<!DOCTYPE html><html><head>
 <meta charset="UTF-8">
@@ -448,6 +452,8 @@ ${buildTicketHTML(s)}
       setTimeout(() => { w.print() }, 350)
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  void _printTicket_legacy
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER: LOGIN
