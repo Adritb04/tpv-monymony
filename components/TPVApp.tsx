@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api-client'
 import PurchasesModule from './PurchasesModule'
 import MobileTPV from './MobileTPV'
+import CashRegister from './CashRegister'
 import { printTicketAuto } from '@/lib/thermal-print'
 
 // ── helpers ──────────────────────────────────────────────────────
@@ -117,7 +118,7 @@ export default function TPVApp() {
     return () => window.removeEventListener('resize', check)
   }, [])
   const [user, setUser]   = useState<any>(null)
-  const [view, setView]   = useState<'tpv' | 'history' | 'admin'>('tpv')
+  const [view, setView]   = useState<'tpv' | 'history' | 'admin' | 'caja'>('tpv')
   const [clock, setClock] = useState('')
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
 
@@ -508,6 +509,11 @@ ${buildTicketHTML(s)}
               {v === 'tpv' ? '🧾 Venta' : '📋 Historial'}
             </button>
           ))}
+          <button onClick={() => setView('caja')} style={{
+            padding:'5px 12px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:500, fontFamily:'inherit',
+            background: view==='caja' ? 'var(--green)' : 'none',
+            color: view==='caja' ? '#fff' : 'var(--text2)',
+          }}>💰 Caja</button>
           {user.role === 'admin' && (
             <button onClick={() => setView('admin')} style={{
               padding:'5px 12px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:500, fontFamily:'inherit',
@@ -748,6 +754,13 @@ ${buildTicketHTML(s)}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* CAJA VIEW */}
+      {view === 'caja' && (
+        <div style={S.view}>
+          <CashRegister token={token!} user={user} />
         </div>
       )}
 
