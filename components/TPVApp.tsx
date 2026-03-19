@@ -125,6 +125,15 @@ export default function TPVApp() {
   const [products, setProducts]   = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
   const [cart, setCart]           = useState<any[]>([])
+  const [openCaja, setOpenCaja]       = useState<any>(null)
+  const [cajaChecked, setCajaChecked]   = useState(false)
+  const [aperturaModal, setAperturaModal] = useState(false)
+  const [cierreModal, setCierreModal]   = useState(false)
+  const [fondoInicial, setFondoInicial] = useState('')
+  const [notasApertura, setNotasApertura] = useState('')
+  const [realContado, setRealContado]   = useState('')
+  const [notasCierre, setNotasCierre]   = useState('')
+  const [cajaLoading, setCajaLoading]   = useState(false)
   const [payMethod, setPayMethod] = useState<'efectivo' | 'tarjeta'>('efectivo')
   const [activeCat, setActiveCat] = useState(0) // 0 = all
   const [search, setSearch]       = useState('')
@@ -179,6 +188,125 @@ export default function TPVApp() {
   }, [token])
 
   useEffect(() => { if (token) loadProducts() }, [token, loadProducts])
+
+  // ── Load caja status ──
+  const loadCaja = useCallback(async () => {
+    if (!token) return
+    try {
+      const res = await fetch('/api/cash-register?status=abierto&limit=1', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const j = await res.json()
+      const open = (j.data || []).find((r: any) => r.status === 'abierto') || null
+      setOpenCaja(open)
+      setCajaChecked(true)
+    } catch { setCajaChecked(true) }
+  }, [token])
+
+  useEffect(() => { if (token) loadCaja() }, [token, loadCaja])
+
+  // ── Apertura de caja ──
+  const doApertura = async () => {
+    if (!token) return
+    setCajaLoading(true)
+    try {
+      const res = await fetch('/api/cash-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'apertura', fondo_inicial: parseFloat(fondoInicial) || 0, notes: notasApertura }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error)
+      showToast('✓ Caja abierta')
+      setFondoInicial(''); setNotasApertura(''); setAperturaModal(false)
+      loadCaja()
+    } catch (e: any) { showToast(e.message, 'err') }
+    finally { setCajaLoading(false) }
+  }
+
+  // ── Cierre de caja ──
+  const doCierre = async () => {
+    if (!token || !openCaja) return
+    setCajaLoading(true)
+    try {
+      const res = await fetch('/api/cash-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'cierre', apertura_id: openCaja.id, real_contado: parseFloat(realContado) || 0, notes: notasCierre }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error)
+      showToast('✓ Caja cerrada')
+      setRealContado(''); setNotasCierre(''); setCierreModal(false)
+      loadCaja()
+      // Print PDF cierre
+      printCierreArqueo(j.data)
+    } catch (e: any) { showToast(e.message, 'err') }
+    finally { setCajaLoading(false) }
+  }
+
+  const printCierreArqueo = (r: any) => {
+    const dif = parseFloat(r.diferencia)
+    const difColor = dif === 0 ? '#2b8a3e' : dif > 0 ? '#1864ab' : '#c92a2a'
+    const difText  = dif === 0 ? '✓ CUADRADA' : dif > 0 ? `SOBRANTE +${Math.abs(dif).toFixed(2)} €` : `FALTANTE -${Math.abs(dif).toFixed(2)} €`
+    const NEGOCIO_L = {
+      nombre: process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE || 'MI TIENDA',
+      nif: process.env.NEXT_PUBLIC_NEGOCIO_NIF || '',
+    }
+    const w = window.open('', '_blank', 'width=700,height=900')!
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Arqueo de Caja</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:24px}
+    h1{font-size:18px;margin-bottom:2px}h2{font-size:13px;margin:14px 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
+    .header{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px}
+    .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}
+    .row.total{font-weight:700;font-size:14px;border-top:2px solid #000;border-bottom:none;padding-top:6px}
+    .box{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .sign-box{border:1px solid #999;border-radius:4px;min-height:60px;padding:8px;margin-top:6px}
+    .signs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+    .footer{margin-top:20px;font-size:9px;color:#888;border-top:1px solid #ccc;padding-top:8px}</style></head><body>
+    <div class="header">
+      <div><h1>${NEGOCIO_L.nombre}</h1><div>NIF: ${NEGOCIO_L.nif}</div></div>
+      <div style="text-align:right"><div style="font-size:16px;font-weight:700">ARQUEO DE CAJA</div>
+      <div>Apertura: ${r.opened_at ? new Date(r.opened_at).toLocaleString('es-ES') : '-'}</div>
+      <div>Cierre: ${r.closed_at ? new Date(r.closed_at).toLocaleString('es-ES') : '-'}</div></div>
+    </div>
+    <div class="grid2">
+      <div class="box"><div style="font-weight:700;margin-bottom:8px">Apertura</div>
+        <div class="row"><span>Fondo inicial</span><span><b>${parseFloat(r.fondo_inicial).toFixed(2)} €</b></span></div>
+        <div class="row"><span>Abierta por</span><span>${r.opened_by_name}</span></div>
+      </div>
+      <div class="box"><div style="font-weight:700;margin-bottom:8px">Cierre</div>
+        <div class="row"><span>Cerrada por</span><span>${r.closed_by_name}</span></div>
+        ${r.notes ? `<div class="row"><span>Notas</span><span>${r.notes}</span></div>` : ''}
+      </div>
+    </div>
+    <h2>Ventas del turno</h2>
+    <div class="box">
+      <div class="row"><span>Ventas en efectivo</span><span>${parseFloat(r.ventas_efectivo).toFixed(2)} €</span></div>
+      <div class="row"><span>Ventas con tarjeta</span><span>${parseFloat(r.ventas_tarjeta).toFixed(2)} €</span></div>
+      <div class="row total"><span>TOTAL VENTAS</span><span>${parseFloat(r.ventas_total).toFixed(2)} €</span></div>
+    </div>
+    <h2>Cuadre de caja</h2>
+    <div class="box" style="border-color:${difColor}">
+      <div class="row"><span>Fondo inicial</span><span>${parseFloat(r.fondo_inicial).toFixed(2)} €</span></div>
+      <div class="row"><span>+ Ventas efectivo</span><span>${parseFloat(r.ventas_efectivo).toFixed(2)} €</span></div>
+      <div class="row total"><span>ESPERADO EN CAJA</span><span>${parseFloat(r.esperado).toFixed(2)} €</span></div>
+      <div class="row" style="margin-top:8px"><span>REAL CONTADO</span><span><b>${parseFloat(r.real_contado).toFixed(2)} €</b></span></div>
+      <div class="row" style="margin-top:6px;padding-top:6px;border-top:2px solid #000;font-weight:700;font-size:15px;color:${difColor}">
+        <span>DIFERENCIA</span><span>${difText}</span>
+      </div>
+    </div>
+    <div class="signs">
+      <div><div style="font-size:10px;color:#888">Firma del cajero</div><div class="sign-box"></div>
+        <div style="font-size:10px;text-align:center;margin-top:4px">${r.closed_by_name}</div></div>
+      <div><div style="font-size:10px;color:#888">Firma responsable / Sello</div><div class="sign-box"></div></div>
+    </div>
+    <div class="footer">TPV-Legal-ES · ${new Date().toLocaleString('es-ES')}</div>
+    </body></html>`)
+    w.document.close()
+    setTimeout(() => w.print(), 400)
+  }
 
   // ── Load sales ──
   const loadSales = useCallback(async () => {
@@ -301,6 +429,11 @@ export default function TPVApp() {
   // ── CHECKOUT ──
   const checkout = async () => {
     if (!cart.length || !token) return
+    if (cajaChecked && !openCaja) {
+      showToast('⚠️ Debes abrir la caja antes de vender', 'err')
+      setView('caja')
+      return
+    }
     setLoading(true)
     try {
       const items = cart.map(i => {
@@ -652,17 +785,24 @@ ${buildTicketHTML(s)}
                   </button>
                 ))}
               </div>
-              <button onClick={checkout} disabled={!cart.length || loading} style={{
+              <button onClick={checkout} disabled={!cart.length || loading || (cajaChecked && !openCaja)} style={{
                 width:'100%', padding:11, borderRadius:8, border:'none',
                 background: cart.length ? 'var(--green)' : 'var(--s3)',
                 color: cart.length ? '#fff' : 'var(--text3)',
                 cursor: cart.length ? 'pointer' : 'not-allowed',
                 fontSize:14, fontWeight:700, fontFamily:'inherit',
               }}>
-                {loading ? '...' : cart.length ? `Cobrar ${fmt(total)}` : 'Cobrar'}
+                {loading ? '...' : (cajaChecked && !openCaja) ? '🔴 Abre la caja primero' : cart.length ? `Cobrar ${fmt(total)}` : 'Cobrar'}
               </button>
               {cart.length > 0 && (
                 <button onClick={() => setCart([])} style={{ ...S.btnOutline, width:'100%', marginTop:5, fontSize:11 }}>Vaciar carrito</button>
+              )}
+              {/* Cerrar caja button */}
+              {openCaja && (
+                <button onClick={() => { setRealContado(''); setNotasCierre(''); setCierreModal(true) }} style={{
+                  width:'100%', marginTop:8, padding:'8px', borderRadius:8, border:'1px solid var(--red)',
+                  background:'none', color:'var(--red)', cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit',
+                }}>🔴 Cerrar caja</button>
               )}
             </div>
           </div>
@@ -754,7 +894,7 @@ ${buildTicketHTML(s)}
       {/* CAJA VIEW */}
       {view === 'caja' && (
         <div style={S.view}>
-          <CashRegister token={token!} user={user} />
+          <CashRegister token={token!} user={user} onCajaChange={loadCaja} />
         </div>
       )}
 
@@ -1092,6 +1232,113 @@ ${buildTicketHTML(s)}
               <b style={{ color:'var(--text)' }}>Seguridad:</b> Contraseñas hasheadas con bcrypt. Hash encadenado SHA-256 por ticket. Control de acceso por roles. Datos en Supabase (UE).
             </div>
             <button onClick={() => setRgpdModal(false)} style={{ ...S.btn('var(--amber)'), width:'100%', marginTop:16 }}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── APERTURA CAJA — FULLSCREEN MODAL ── */}
+      {cajaChecked && !openCaja && (
+        <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(13,13,20,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 48px 96px rgba(0,0,0,.8)', textAlign:'center' }}>
+            <div style={{ fontSize:48, marginBottom:12 }}>🏪</div>
+            <div style={{ fontSize:22, fontWeight:700, marginBottom:4 }}>Apertura de Caja</div>
+            <div style={{ color:'var(--text2)', fontSize:13, marginBottom:28 }}>
+              {new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
+            </div>
+            <div style={{ textAlign:'left', marginBottom:16 }}>
+              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
+                Fondo inicial (€) — Dinero en caja al abrir
+              </label>
+              <input
+                style={{ ...S.input, fontSize:28, fontWeight:700, textAlign:'center' as const, fontFamily:'monospace', padding:'14px' }}
+                type="number" step="0.01" min="0"
+                value={fondoInicial}
+                onChange={e => setFondoInicial(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && doApertura()}
+              />
+            </div>
+            <div style={{ textAlign:'left', marginBottom:24 }}>
+              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
+                Observaciones (opcional)
+              </label>
+              <input
+                style={{ ...S.input }}
+                value={notasApertura}
+                onChange={e => setNotasApertura(e.target.value)}
+                placeholder="Ej: Turno de mañana, cajero Juan..."
+                onKeyDown={e => e.key === 'Enter' && doApertura()}
+              />
+            </div>
+            <button onClick={doApertura} disabled={cajaLoading} style={{
+              width:'100%', padding:16, borderRadius:10, border:'none',
+              background:'var(--green)', color:'#fff', cursor:'pointer',
+              fontSize:16, fontWeight:700, fontFamily:'inherit',
+              boxShadow:'0 6px 24px rgba(62,207,142,.4)',
+            }}>
+              {cajaLoading ? '...' : '🟢 Abrir caja y comenzar'}
+            </button>
+            <div style={{ marginTop:16, fontSize:11, color:'var(--text3)' }}>
+              El sistema registrará todas las ventas de este turno
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CIERRE CAJA MODAL ── */}
+      {cierreModal && openCaja && (
+        <div style={{ position:'fixed', inset:0, zIndex:700, background:'rgba(0,0,0,.8)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' }}
+          onClick={e => { if(e.target===e.currentTarget) setCierreModal(false) }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:32, width:420, boxShadow:'0 40px 80px rgba(0,0,0,.7)' }}>
+            <div style={{ fontSize:36, textAlign:'center' as const, marginBottom:8 }}>🔴</div>
+            <div style={{ fontSize:18, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Cierre de Caja</div>
+            <div style={{ color:'var(--text2)', fontSize:12, textAlign:'center' as const, marginBottom:20 }}>
+              Abierta por {openCaja.opened_by_name} · {openCaja.opened_at ? new Date(openCaja.opened_at).toLocaleString('es-ES') : ''}
+            </div>
+
+            {/* Info apertura */}
+            <div style={{ background:'var(--s2)', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:12 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                <span style={{ color:'var(--text2)' }}>Fondo inicial</span>
+                <span style={{ fontFamily:'monospace', fontWeight:700 }}>{fmt(parseFloat(openCaja.fondo_inicial))}</span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
+                Importe real contado en caja (€) *
+              </label>
+              <input
+                style={{ ...S.input, fontSize:24, fontWeight:700, textAlign:'center' as const, fontFamily:'monospace', padding:'12px' }}
+                type="number" step="0.01" min="0"
+                value={realContado}
+                onChange={e => setRealContado(e.target.value)}
+                placeholder="0.00"
+                autoFocus
+              />
+              <div style={{ fontSize:11, color:'var(--text2)', marginTop:5 }}>
+                Cuenta todos los billetes y monedas en la caja ahora
+              </div>
+            </div>
+            <div style={{ marginBottom:20 }}>
+              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
+                Observaciones (opcional)
+              </label>
+              <input style={S.input} value={notasCierre} onChange={e => setNotasCierre(e.target.value)} placeholder="Ej: Sin incidencias" />
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => setCierreModal(false)} style={{ ...S.btnOutline, flex:1 }}>Cancelar</button>
+              <button onClick={doCierre} disabled={cajaLoading || !realContado} style={{
+                flex:2, padding:12, borderRadius:8, border:'none',
+                background: realContado ? 'var(--red)' : 'var(--s3)',
+                color: realContado ? '#fff' : 'var(--text3)',
+                cursor: realContado ? 'pointer' : 'not-allowed',
+                fontSize:14, fontWeight:700, fontFamily:'inherit',
+              }}>
+                {cajaLoading ? '...' : '🔴 Cerrar caja y generar PDF'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -25,9 +25,10 @@ const S = {
 interface CashRegisterProps {
   token: string
   user: any
+  onCajaChange?: () => void
 }
 
-export default function CashRegister({ token, user }: CashRegisterProps) {
+export default function CashRegister({ token, user, onCajaChange }: CashRegisterProps) {
   const [registers, setRegisters]   = useState<any[]>([])
   const [openCaja, setOpenCaja]     = useState<any>(null)
   const [loading, setLoading]       = useState(false)
@@ -75,6 +76,7 @@ export default function CashRegister({ token, user }: CashRegisterProps) {
       showToast('✓ Caja abierta')
       setFondoInicial(''); setNotesAp(''); setView('main')
       load()
+      onCajaChange?.()
     } catch (e: any) { showToast(e.message, false) }
     finally { setLoading(false) }
   }
@@ -92,6 +94,7 @@ export default function CashRegister({ token, user }: CashRegisterProps) {
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
       showToast('✓ Caja cerrada')
+      onCajaChange?.()
       // Print PDF
       printArqueoPDF(j.data)
       setRealContado(''); setNotesCierre(''); setView('main')
