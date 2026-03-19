@@ -154,6 +154,10 @@ export default function TPVApp() {
 
   // Modals
   const [ticketModal, setTicketModal] = useState<any>(null)
+  const [pesoModal, setPesoModal]     = useState<any>(null)  // product selected for kg entry
+  const [pesoKg, setPesoKg]           = useState('')
+  const [quickModal, setQuickModal]   = useState(false)
+  const [quickForm, setQuickForm]     = useState({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 })
   const [rectModal, setRectModal]     = useState<any>(null)
   const [rectReason, setRectReason]   = useState('')
   const [formModal, setFormModal]     = useState<{ type: 'product' | 'category' | 'user'; data?: any } | null>(null)
@@ -377,19 +381,72 @@ export default function TPVApp() {
   // ── CART ──
   const addToCart = (prd: any) => {
     if (!prd.active || prd.stock === 0) return
+    // kg products → open peso modal
+    if (prd.unit_type === 'kg') {
+      setPesoModal(prd)
+      setPesoKg('')
+      return
+    }
+    addToCartDirect(prd, 1)
+  }
+
+  const addToCartDirect = (prd: any, qty: number, customPrice?: number) => {
+    const price = customPrice ?? parseFloat(prd.price)
     setCart(prev => {
-      const ex = prev.find(i => i.id === prd.id)
+      // kg products always add as new line (different weight each time)
+      if (prd.unit_type === 'kg') {
+        return [...prev, {
+          id: prd.id, name: prd.name, emoji: prd.emoji,
+          price, iva_rate: prd.iva_rate,
+          regime: prd.regime, cost_price: parseFloat(prd.cost_price || 0),
+          unit_type: 'kg', qty,
+          label: `${qty} kg × ${parseFloat(prd.price).toFixed(2).replace('.',',')} €/kg`,
+        }]
+      }
+      const ex = prev.find(i => i.id === prd.id && !i.unit_type_kg)
       if (ex) {
         if (ex.qty >= prd.stock) return prev
         return prev.map(i => i.id === prd.id ? { ...i, qty: i.qty + 1 } : i)
       }
       return [...prev, {
         id: prd.id, name: prd.name, emoji: prd.emoji,
-        price: parseFloat(prd.price), iva_rate: prd.iva_rate,
+        price, iva_rate: prd.iva_rate,
         regime: prd.regime, cost_price: parseFloat(prd.cost_price || 0),
-        qty: 1,
+        unit_type: prd.unit_type || 'unidad', qty: 1,
       }]
     })
+  }
+
+  const addQuickItem = () => {
+    const price = parseFloat(quickForm.price)
+    if (!quickForm.name || !price || price <= 0) return
+    const id = Date.now() // unique temp id
+    setCart(prev => [...prev, {
+      id,
+      name: quickForm.name,
+      emoji: '🏷️',
+      price: quickForm.unit_type === 'kg' ? price * quickForm.qty : price,
+      iva_rate: quickForm.iva_rate,
+      regime: 'iva',
+      cost_price: 0,
+      unit_type: quickForm.unit_type,
+      qty: quickForm.unit_type === 'kg' ? quickForm.qty : quickForm.qty,
+      label: quickForm.unit_type === 'kg' ? `${quickForm.qty} kg × ${price.toFixed(2).replace('.',',')} €/kg` : undefined,
+      isQuick: true,
+    }])
+    setQuickModal(false)
+    setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 })
+  }
+
+  const confirmPeso = () => {
+    if (!pesoModal || !pesoKg) return
+    const kg = parseFloat(pesoKg.replace(',', '.'))
+    if (isNaN(kg) || kg <= 0) return
+    const pricePerKg = parseFloat(pesoModal.price)
+    const totalPrice = Math.round(kg * pricePerKg * 100) / 100
+    addToCartDirect(pesoModal, kg, totalPrice)
+    setPesoModal(null)
+    setPesoKg('')
   }
 
   const chgQty = (id: number, d: number) =>
@@ -399,7 +456,8 @@ export default function TPVApp() {
     let base = 0, ivaTotal = 0
     const groups: Record<string, any> = {}
     cart.forEach(i => {
-      const total = i.price * i.qty
+      // For kg items: price = total already calculated, qty = weight in kg
+      const total = i.unit_type === 'kg' ? i.price : i.price * i.qty
       if (i.regime === 'rebu') {
         const margin = Math.max(0, i.price - i.cost_price) * i.qty
         const iva    = margin * i.iva_rate / (100 + i.iva_rate)
@@ -442,9 +500,12 @@ export default function TPVApp() {
           ? lineTotal - Math.max(0, i.price - i.cost_price) * i.qty * i.iva_rate / (100 + i.iva_rate)
           : lineTotal / (1 + i.iva_rate / 100)
         return {
-          product_id: i.id, name: i.name, emoji: i.emoji,
-          price: i.price, qty: i.qty,
+          product_id: i.id,
+          name: i.unit_type === 'kg' ? `${i.name} (${i.qty} kg)` : i.name,
+          emoji: i.emoji,
+          price: i.price, qty: i.unit_type === 'kg' ? 1 : i.qty,
           regime: i.regime, iva_rate: i.iva_rate, cost_price: i.cost_price,
+          unit_type: i.unit_type || 'unidad',
           line_total: lineTotal,
           line_base:  lineBase,
           line_iva:   lineTotal - lineBase,
@@ -667,8 +728,13 @@ ${buildTicketHTML(s)}
         <div style={S.view}>
           {/* Products panel */}
           <div style={S.prdPanel}>
-            <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
+            <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', gap:8 }}>
               <input style={S.input} placeholder="🔍 Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
+              <button onClick={() => { setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 }); setQuickModal(true) }} style={{
+                padding:'8px 12px', borderRadius:6, border:'1px solid var(--amber)', background:'var(--amber-dim)',
+                color:'var(--amber)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit',
+                whiteSpace:'nowrap', flexShrink:0,
+              }}>🏷️ Artículo rápido</button>
             </div>
             {/* Category bar */}
             <div style={{ display:'flex', gap:6, padding:'8px 14px', overflowX:'auto', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
@@ -698,14 +764,21 @@ ${buildTicketHTML(s)}
                 >
                   <div style={{ fontSize:26, marginBottom:5 }}>{p.emoji}</div>
                   <div style={{ fontSize:11, fontWeight:600, marginBottom:4, lineHeight:1.3 }}>{p.name}</div>
-                  <div style={{ fontSize:13, fontWeight:700, color:'var(--accent)', fontFamily:'monospace' }}>{fmt(parseFloat(p.price))}</div>
-                  <span style={{ fontSize:9, padding:'1px 5px', borderRadius:3, fontWeight:600, marginTop:3, display:'inline-block',
-                    background: p.regime==='rebu'?'var(--teal-dim)':'var(--accent-dim)',
-                    color: p.regime==='rebu'?'var(--teal)':'var(--accent)' }}>
-                    {p.regime==='rebu' ? 'REBU' : `IVA ${p.iva_rate}%`}
-                  </span>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--accent)', fontFamily:'monospace' }}>
+                    {fmt(parseFloat(p.price))}{p.unit_type==='kg' ? <span style={{ fontSize:9, color:'var(--text2)' }}>/kg</span> : null}
+                  </div>
+                  <div style={{ display:'flex', gap:3, justifyContent:'center', flexWrap:'wrap', marginTop:3 }}>
+                    <span style={{ fontSize:9, padding:'1px 5px', borderRadius:3, fontWeight:600,
+                      background: p.regime==='rebu'?'var(--teal-dim)':'var(--accent-dim)',
+                      color: p.regime==='rebu'?'var(--teal)':'var(--accent)' }}>
+                      {p.regime==='rebu' ? 'REBU' : `IVA ${p.iva_rate}%`}
+                    </span>
+                    {p.unit_type==='kg' && (
+                      <span style={{ fontSize:9, padding:'1px 5px', borderRadius:3, fontWeight:600, background:'var(--amber-dim)', color:'var(--amber)' }}>⚖️ kg</span>
+                    )}
+                  </div>
                   <div style={{ fontSize:10, color: p.stock<5 ? 'var(--amber)' : 'var(--text3)', marginTop:2 }}>
-                    Stock: {p.stock}
+                    {p.unit_type==='kg' ? '⚖️ Venta por peso' : `Stock: ${p.stock}`}
                   </div>
                 </div>
               ))}
@@ -719,7 +792,7 @@ ${buildTicketHTML(s)}
           <div style={S.cartPanel}>
             <div style={{ padding:'12px 14px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
               <span style={{ fontSize:13, fontWeight:600 }}>🛒 Carrito</span>
-              <span style={{ background:'var(--accent)', color:'#fff', borderRadius:20, padding:'2px 7px', fontSize:11, fontWeight:700 }}>{cart.reduce((a,b)=>a+b.qty,0)}</span>
+              <span style={{ background:'var(--accent)', color:'#fff', borderRadius:20, padding:'2px 7px', fontSize:11, fontWeight:700 }}>{cart.reduce((a,b)=>a+(b.unit_type==='kg'?1:b.qty),0)}</span>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:8, display:'flex', flexDirection:'column', gap:5, minHeight:0 }}>
               {!cart.length
@@ -732,13 +805,21 @@ ${buildTicketHTML(s)}
                     <span style={{ fontSize:18, flexShrink:0 }}>{i.emoji}</span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:11, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{i.name}</div>
-                      <div style={{ fontSize:10, color:'var(--text2)' }}>{fmt(i.price)} · <span style={{ color:i.regime==='rebu'?'var(--teal)':'var(--accent)' }}>{i.regime==='rebu'?'REBU':`IVA ${i.iva_rate}%`}</span></div>
+                      <div style={{ fontSize:10, color:'var(--text2)' }}>
+                        {i.unit_type==='kg' ? <span style={{ color:'var(--amber)' }}>{i.label}</span> : <>{fmt(i.price)} · <span style={{ color:i.regime==='rebu'?'var(--teal)':'var(--accent)' }}>{i.regime==='rebu'?'REBU':`IVA ${i.iva_rate}%`}</span></>}
+                      </div>
                     </div>
-                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                      <button onClick={() => chgQty(i.id, -1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-                      <span style={{ fontSize:12, fontWeight:600, minWidth:16, textAlign:'center', fontFamily:'monospace' }}>{i.qty}</span>
-                      <button onClick={() => chgQty(i.id, 1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-                    </div>
+                    {i.unit_type === 'kg' ? (
+                      <span style={{ fontSize:11, fontWeight:600, color:'var(--amber)', fontFamily:'monospace', minWidth:50, textAlign:'center' }}>
+                        {i.qty} kg
+                      </span>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                        <button onClick={() => chgQty(i.id, -1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+                        <span style={{ fontSize:12, fontWeight:600, minWidth:16, textAlign:'center', fontFamily:'monospace' }}>{i.qty}</span>
+                        <button onClick={() => chgQty(i.id, 1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+                      </div>
+                    )}
                     <span style={{ fontSize:12, fontWeight:700, color:'var(--green)', fontFamily:'monospace', flexShrink:0 }}>{fmt(i.price*i.qty)}</span>
                     <button onClick={() => setCart(prev => prev.filter(x => x.id !== i.id))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:12, padding:2 }}>✕</button>
                   </div>
@@ -1161,7 +1242,24 @@ ${buildTicketHTML(s)}
                     <option value="">Seleccionar</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
                   </select></div>
-                <div><label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Precio venta (€)</label>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Unidad de venta</label>
+                  <div style={{ display:'flex', gap:6 }}>
+                    {[['unidad','📦 Por unidad','Precio fijo por artículo'],['kg','⚖️ Por kilogramo','El cajero introduce el peso al vender']].map(([val,label,desc]) => (
+                      <div key={val} onClick={() => setForm({...form, unit_type: val})} style={{
+                        flex:1, padding:'8px 10px', borderRadius:8, cursor:'pointer',
+                        border: `1.5px solid ${(form.unit_type||'unidad')===val ? 'var(--accent)' : 'var(--border)'}`,
+                        background: (form.unit_type||'unidad')===val ? 'var(--accent-dim)' : 'var(--s2)',
+                      }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:(form.unit_type||'unidad')===val?'var(--accent)':'var(--text)', marginBottom:2 }}>{label}</div>
+                        <div style={{ fontSize:10, color:'var(--text2)' }}>{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div><label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>
+                  {(form.unit_type||'unidad')==='kg' ? 'Precio (€/kg)' : 'Precio venta (€)'}
+                </label>
                   <input style={S.input} type="number" step="0.01" min="0" value={form.price||0} onChange={e => setForm({...form, price:parseFloat(e.target.value)})} /></div>
                 <div><label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Stock</label>
                   <input style={S.input} type="number" min="0" value={form.stock||0} onChange={e => setForm({...form, stock:parseInt(e.target.value)})} /></div>
@@ -1232,6 +1330,166 @@ ${buildTicketHTML(s)}
               <b style={{ color:'var(--text)' }}>Seguridad:</b> Contraseñas hasheadas con bcrypt. Hash encadenado SHA-256 por ticket. Control de acceso por roles. Datos en Supabase (UE).
             </div>
             <button onClick={() => setRgpdModal(false)} style={{ ...S.btn('var(--amber)'), width:'100%', marginTop:16 }}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── ARTÍCULO RÁPIDO MODAL ── */}
+      {quickModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+          onClick={e => { if(e.target===e.currentTarget) setQuickModal(false) }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:380, boxShadow:'0 40px 80px rgba(0,0,0,.6)' }}>
+            <div style={{ fontSize:32, textAlign:'center' as const, marginBottom:8 }}>🏷️</div>
+            <div style={{ fontSize:16, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Artículo rápido</div>
+            <div style={{ fontSize:12, color:'var(--text2)', textAlign:'center' as const, marginBottom:20 }}>
+              Se añade al carrito sin guardarse en el catálogo
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column' as const, gap:12 }}>
+              {/* Nombre */}
+              <div>
+                <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>Descripción *</label>
+                <input style={S.input} value={quickForm.name} onChange={e => setQuickForm(f => ({...f, name:e.target.value}))}
+                  placeholder="Ej: Servicio, Descuento, Producto sin código..." autoFocus
+                  onKeyDown={e => e.key === 'Enter' && (document.getElementById('qf-price') as HTMLInputElement)?.focus()} />
+              </div>
+
+              {/* Unidad */}
+              <div>
+                <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>Tipo</label>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                  {([['unidad','📦 Unidad'],['kg','⚖️ Por kg']] as [string,string][]).map(([val,label]) => (
+                    <button key={val} type="button" onClick={() => setQuickForm(f => ({...f, unit_type:val, qty:val==='kg'?1:1}))}
+                      style={{ padding:'8px', borderRadius:8, border:`1.5px solid ${quickForm.unit_type===val?'var(--amber)':'var(--border)'}`,
+                        background: quickForm.unit_type===val?'var(--amber-dim)':'var(--s2)',
+                        color: quickForm.unit_type===val?'var(--amber)':'var(--text2)',
+                        cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit' }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Precio y cantidad */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>
+                    {quickForm.unit_type==='kg' ? 'Precio (€/kg)' : 'Precio (€)'} *
+                  </label>
+                  <input id="qf-price" style={{ ...S.input, fontSize:18, fontWeight:700, fontFamily:'monospace', textAlign:'center' as const }}
+                    type="number" step="0.01" min="0"
+                    value={quickForm.price} onChange={e => setQuickForm(f => ({...f, price:e.target.value}))}
+                    placeholder="0.00"
+                    onKeyDown={e => e.key === 'Enter' && addQuickItem()} />
+                </div>
+                <div>
+                  <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>
+                    {quickForm.unit_type==='kg' ? 'Peso (kg)' : 'Cantidad'}
+                  </label>
+                  <input style={{ ...S.input, textAlign:'center' as const, fontSize:16, fontWeight:700 }}
+                    type="number" step={quickForm.unit_type==='kg'?'0.001':'1'} min={quickForm.unit_type==='kg'?'0.001':'1'}
+                    value={quickForm.qty} onChange={e => setQuickForm(f => ({...f, qty:parseFloat(e.target.value)||1}))}
+                    onKeyDown={e => e.key === 'Enter' && addQuickItem()} />
+                </div>
+              </div>
+
+              {/* IVA */}
+              <div>
+                <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>IVA</label>
+                <div style={{ display:'flex', gap:5 }}>
+                  {([4,10,21] as number[]).map(r => (
+                    <button key={r} type="button" onClick={() => setQuickForm(f => ({...f, iva_rate:r}))}
+                      style={{ flex:1, padding:'7px 4px', borderRadius:6, border:`1px solid ${quickForm.iva_rate===r?'var(--accent)':'var(--border)'}`,
+                        background: quickForm.iva_rate===r?'var(--accent-dim)':'var(--s2)',
+                        color: quickForm.iva_rate===r?'var(--accent)':'var(--text2)',
+                        cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit' }}>
+                      {r}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Preview total */}
+              {quickForm.price && parseFloat(quickForm.price) > 0 && (
+                <div style={{ background:'var(--s2)', borderRadius:8, padding:'10px 14px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontSize:12, color:'var(--text2)' }}>
+                    {quickForm.unit_type==='kg'
+                      ? `${quickForm.qty} kg × ${parseFloat(quickForm.price).toFixed(2).replace('.',',')} €/kg`
+                      : `${quickForm.qty} × ${parseFloat(quickForm.price).toFixed(2).replace('.',',')} €`}
+                  </span>
+                  <span style={{ fontSize:18, fontWeight:700, color:'var(--green)', fontFamily:'monospace' }}>
+                    {((quickForm.unit_type==='kg' ? quickForm.qty * parseFloat(quickForm.price) : quickForm.qty * parseFloat(quickForm.price)) || 0).toFixed(2).replace('.',',')} €
+                  </span>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                <button onClick={() => setQuickModal(false)} style={{ ...S.btnOutline, flex:1 }}>Cancelar</button>
+                <button onClick={addQuickItem} disabled={!quickForm.name || !quickForm.price || parseFloat(quickForm.price) <= 0} style={{
+                  flex:2, padding:12, borderRadius:8, border:'none',
+                  background: (quickForm.name && quickForm.price) ? 'var(--green)' : 'var(--s3)',
+                  color: (quickForm.name && quickForm.price) ? '#fff' : 'var(--text3)',
+                  cursor: (quickForm.name && quickForm.price) ? 'pointer' : 'not-allowed',
+                  fontSize:14, fontWeight:700, fontFamily:'inherit',
+                }}>
+                  ➕ Añadir al carrito
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PESO MODAL — para artículos vendidos por kg ── */}
+      {pesoModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+          onClick={e => { if(e.target===e.currentTarget){ setPesoModal(null); setPesoKg('') } }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:340, boxShadow:'0 40px 80px rgba(0,0,0,.6)', textAlign:'center' }}>
+            <div style={{ fontSize:36, marginBottom:8 }}>⚖️</div>
+            <div style={{ fontSize:16, fontWeight:700, marginBottom:2 }}>{pesoModal.emoji} {pesoModal.name}</div>
+            <div style={{ fontSize:12, color:'var(--text2)', marginBottom:20 }}>
+              Precio: {fmt(parseFloat(pesoModal.price))} / kg
+            </div>
+            <div style={{ marginBottom:8 }}>
+              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:8 }}>
+                Introduce el peso (kg)
+              </label>
+              <input
+                style={{ ...S.input, fontSize:32, fontWeight:700, textAlign:'center' as const, fontFamily:'monospace', padding:'14px', letterSpacing:'.05em' }}
+                type="number" step="0.001" min="0.001"
+                value={pesoKg}
+                onChange={e => setPesoKg(e.target.value)}
+                placeholder="0.000"
+                autoFocus
+                onKeyDown={e => e.key === 'Enter' && confirmPeso()}
+              />
+            </div>
+            {pesoKg && parseFloat(pesoKg.replace(',','.')) > 0 && (
+              <div style={{ background:'var(--s2)', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', color:'var(--text2)', marginBottom:4 }}>
+                  <span>{pesoKg} kg × {fmt(parseFloat(pesoModal.price))}/kg</span>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:18, fontWeight:700 }}>
+                  <span>Total</span>
+                  <span style={{ color:'var(--green)', fontFamily:'monospace' }}>
+                    {fmt(Math.round(parseFloat(pesoKg.replace(',','.')) * parseFloat(pesoModal.price) * 100) / 100)}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => { setPesoModal(null); setPesoKg('') }} style={{ ...S.btnOutline, flex:1 }}>Cancelar</button>
+              <button onClick={confirmPeso} disabled={!pesoKg || parseFloat(pesoKg.replace(',','.')) <= 0} style={{
+                flex:2, padding:12, borderRadius:8, border:'none',
+                background: pesoKg ? 'var(--green)' : 'var(--s3)',
+                color: pesoKg ? '#fff' : 'var(--text3)',
+                cursor: pesoKg ? 'pointer' : 'not-allowed',
+                fontSize:14, fontWeight:700, fontFamily:'inherit',
+              }}>
+                ➕ Añadir al carrito
+              </button>
+            </div>
           </div>
         </div>
       )}

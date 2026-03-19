@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       iva_rate: body.iva_rate || 21,
       cost_price: body.cost_price || 0,
       stock: body.stock || 0,
+      unit_type: body.unit_type || 'unidad',
       active: true,
     })
     .select()
