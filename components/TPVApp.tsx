@@ -406,8 +406,8 @@ export default function TPVApp() {
       <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
         background:'radial-gradient(ellipse 80% 80% at 20% 60%,#1a1060,var(--bg))' }}>
         <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
-          <div style={{ fontSize:44, marginBottom:10 }}>🏪</div>
-          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV Legal ES</div>
+          
+          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV MONY MONY</div>
           <div style={{ color:'var(--text2)', fontSize:12, marginBottom:24 }}>Introduce tus credenciales</div>
           <LoginForm onLogin={doLogin} loading={loading} />
           <div style={{ fontSize:10, color:'var(--text3)', marginTop:16 }}>
@@ -426,8 +426,8 @@ export default function TPVApp() {
     <div style={S.app}>
       {/* TOPBAR */}
       <div style={S.topbar}>
-        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>🏪 TPV</span>
-        <span style={{ ...S.badge('var(--green)','var(--green-dim)'), fontSize:9 }}>✓ Legal ES</span>
+        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>MONY MONY</span>
+        
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
