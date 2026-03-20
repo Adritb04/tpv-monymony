@@ -159,6 +159,8 @@ export default function TPVApp() {
   const [pesoKg, setPesoKg]           = useState('')
   const [quickModal, setQuickModal]   = useState(false)
   const [quickForm, setQuickForm]     = useState({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 })
+  const [barcodeBuffer, setBarcodeBuffer] = useState('')
+  const [barcodeToast, setBarcodeToast]   = useState<string|null>(null)
   const [rectModal, setRectModal]     = useState<any>(null)
   const [rectReason, setRectReason]   = useState('')
   const [formModal, setFormModal]     = useState<{ type: 'product' | 'category' | 'user'; data?: any } | null>(null)
@@ -209,6 +211,43 @@ export default function TPVApp() {
   }, [token])
 
   useEffect(() => { if (token) loadCaja() }, [token, loadCaja])
+
+  // ── Barcode scanner listener ──
+  // Scanners type very fast + Enter. We capture that globally.
+  useEffect(() => {
+    if (!token) return
+    let buf = ''
+    let lastKey = 0
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      const now = Date.now()
+      if (now - lastKey > 300) buf = '' // reset if too slow (human typing)
+      lastKey = now
+      if (e.key === 'Enter' && buf.length >= 3) {
+        const code = buf.trim()
+        buf = ''
+        // Lookup barcode
+        fetch(`/api/products?barcode=${encodeURIComponent(code)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()).then(j => {
+          if (j.data) {
+            addToCartDirect(j.data, 1)
+            setBarcodeToast(`✓ ${j.data.name} añadido`)
+            setTimeout(() => setBarcodeToast(null), 2000)
+          } else {
+            setBarcodeToast(`⚠️ Código ${code} no encontrado`)
+            setTimeout(() => setBarcodeToast(null), 2500)
+          }
+        }).catch(() => {})
+      } else if (e.key !== 'Enter' && e.key.length === 1) {
+        buf += e.key
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [token, products])
 
   // ── Apertura de caja ──
   const doApertura = async () => {
@@ -653,10 +692,13 @@ ${buildTicketHTML(s)}
       <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
         background:'linear-gradient(135deg,#f0f4ff,var(--bg))' }}>
         <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
-         <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:80, width:'100%', marginBottom:16, objectFit:'contain' }} />
+          <div style={{ fontSize:44, marginBottom:10 }}>🏪</div>
+          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV Legal ES</div>
           <div style={{ color:'var(--text2)', fontSize:12, marginBottom:24 }}>Introduce tus credenciales</div>
           <LoginForm onLogin={doLogin} loading={loading} />
-          
+          <div style={{ fontSize:10, color:'var(--text3)', marginTop:16 }}>
+            Demo: admin / admin123 · encargado / enc123 · cajero1 / caj123
+          </div>
         </div>
         {toast && <Toast msg={toast.msg} type={toast.type} />}
       </div>
@@ -683,7 +725,8 @@ ${buildTicketHTML(s)}
     <div style={S.app}>
       {/* TOPBAR */}
       <div style={S.topbar}>
-        <img src="/logos/LOGO_OFICIAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:32, width:'auto', objectFit:'contain' }} />
+        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>🏪 TPV</span>
+        <span style={{ ...S.badge('var(--green)','var(--green-dim)'), fontSize:9 }}>✓ Legal ES</span>
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
@@ -726,7 +769,7 @@ ${buildTicketHTML(s)}
           {/* Products panel */}
           <div style={S.prdPanel}>
             <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', gap:8 }}>
-              <input style={S.input} placeholder="🔍 Buscar producto..." value={search} onChange={e => setSearch(e.target.value)} />
+              <input style={S.input} placeholder="🔍 Buscar producto o escanea código de barras..." value={search} onChange={e => setSearch(e.target.value)} />
               <button onClick={() => { setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 }); setQuickModal(true) }} style={{
                 padding:'8px 12px', borderRadius:6, border:'1px solid var(--amber)', background:'var(--amber-dim)',
                 color:'var(--amber)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit',
@@ -1016,7 +1059,10 @@ ${buildTicketHTML(s)}
                       {products.map(p => (
                         <tr key={p.id} onMouseEnter={e => (e.currentTarget.style.background='var(--s2)')} onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
                           <td style={S.td}><span style={{ fontSize:18 }}>{p.emoji}</span></td>
-                          <td style={{ ...S.td, fontWeight:600 }}>{p.name}</td>
+                          <td style={{ ...S.td, fontWeight:600 }}>
+                            {p.name}
+                            {p.barcode && <div style={{ fontSize:9, color:'var(--text3)', fontFamily:'monospace', marginTop:1 }}>🔢 {p.barcode}</div>}
+                          </td>
                           <td style={S.td}>{categories.find(c=>c.id===p.category_id)?.name || '-'}</td>
                           <td style={{ ...S.td, fontFamily:'monospace' }}>{fmt(parseFloat(p.price))}</td>
                           <td style={S.td}><span style={{ ...S.badge(p.regime==='rebu'?'var(--teal)':'var(--accent)', p.regime==='rebu'?'var(--teal-dim)':'var(--accent-dim)'), fontSize:10 }}>{p.regime==='rebu'?'REBU':`IVA ${p.iva_rate}%`}</span></td>
@@ -1123,10 +1169,6 @@ ${buildTicketHTML(s)}
             )}
 
             {/* Integrity tab */}
-           
-
-            {/* RGPD tab */}
-            
             {adminTab === 'compras' && (
               <PurchasesModule token={token!} categories={categories} />
             )}
@@ -1188,6 +1230,11 @@ ${buildTicketHTML(s)}
                 <div style={{ gridColumn:'1/-1' }}>
                   <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Nombre</label>
                   <input style={S.input} value={form.name||''} onChange={e => setForm({...form, name:e.target.value})} placeholder="Nombre del producto" />
+                </div>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Código de barras (opcional)</label>
+                  <input style={S.input} value={form.barcode||''} onChange={e => setForm({...form, barcode:e.target.value})}
+                    placeholder="Escanea o escribe el código EAN/UPC..." />
                 </div>
                 <div><label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase', display:'block', marginBottom:4 }}>Emoji</label>
                   <input style={S.input} value={form.emoji||'📦'} onChange={e => setForm({...form, emoji:e.target.value})} maxLength={4} /></div>
@@ -1285,6 +1332,16 @@ ${buildTicketHTML(s)}
             </div>
             <button onClick={() => setRgpdModal(false)} style={{ ...S.btn('var(--amber)'), width:'100%', marginTop:16 }}>Cerrar</button>
           </div>
+        </div>
+      )}
+
+      {/* ── BARCODE TOAST ── */}
+      {barcodeToast && (
+        <div style={{ position:'fixed', top:70, left:'50%', transform:'translateX(-50%)', zIndex:800,
+          background: barcodeToast.startsWith('✓') ? 'var(--green)' : 'var(--amber)',
+          color:'#fff', padding:'10px 24px', borderRadius:30, fontSize:14, fontWeight:700,
+          boxShadow:'0 4px 20px rgba(0,0,0,.2)', whiteSpace:'nowrap' }}>
+          {barcodeToast}
         </div>
       )}
 
