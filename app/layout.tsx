@@ -1,6 +1,14 @@
 import type { Metadata } from 'next'
 import './globals.css'
-export const metadata: Metadata = { title: 'TPV MONY MONY', description: '' }
+
+export const metadata: Metadata = {
+  title: 'TPV MONY MONY',
+  description: '',
+  icons: {
+    icon: '/logos/ICONO_CORPORATIVO.svg',
+  },
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es">
