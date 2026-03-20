@@ -5,6 +5,7 @@ import { api } from '@/lib/api-client'
 import PurchasesModule from './PurchasesModule'
 import MobileTPV from './MobileTPV'
 import CashRegister from './CashRegister'
+import ReportsModule from './ReportsModule'
 
 // ── helpers ──────────────────────────────────────────────────────
 const fmt = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
@@ -35,8 +36,8 @@ const S = {
   btnOutline: { padding:'6px 11px', borderRadius:6, border:'1px solid var(--border)', background:'none', color:'var(--text2)', cursor:'pointer', fontSize:11, fontWeight:500, fontFamily:'inherit' },
   card: { background:'var(--s2)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 14px' },
   badge: (color: string, bg: string) => ({ display:'inline-flex', alignItems:'center', padding:'2px 8px', borderRadius:20, fontSize:10, fontWeight:600, color, background:bg }),
-  modal: { position:'fixed' as const, inset:0, background:'rgba(0,0,0,.8)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' },
-  modalBox: { background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:420, maxHeight:'90vh', overflowY:'auto' as const, boxShadow:'0 40px 80px rgba(0,0,0,.6)' },
+  modal: { position:'fixed' as const, inset:0, background:'rgba(26,29,46,.6)', zIndex:500, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' },
+  modalBox: { background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:420, maxHeight:'90vh', overflowY:'auto' as const, boxShadow:'0 8px 32px rgba(89,122,166,.2)' },
   table: { width:'100%', borderCollapse:'collapse' as const },
   th: { textAlign:'left' as const, fontSize:10, color:'var(--text2)', fontWeight:600, padding:'6px 10px', borderBottom:'1px solid var(--border)', textTransform:'uppercase' as const, letterSpacing:'.05em' },
   td: { padding:'9px 10px', borderBottom:'1px solid var(--border)', fontSize:12, verticalAlign:'middle' as const },
@@ -147,7 +148,7 @@ export default function TPVApp() {
   const [typeFilter, setTypeFilter] = useState('')
 
   // Admin
-  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'integrity' | 'rgpd' | 'compras'>('products')
+  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'compras' | 'informes'>('products')
   const [adminUsers, setAdminUsers] = useState<any[]>([])
   const [opLog, setOpLog]         = useState<any[]>([])
   const [integrity, setIntegrity] = useState<any>(null)
@@ -650,7 +651,7 @@ ${buildTicketHTML(s)}
   if (!token || !user) {
     return (
       <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
-        background:'radial-gradient(ellipse 80% 80% at 20% 60%,#1a1060,var(--bg))' }}>
+        background:'linear-gradient(135deg,#f0f4ff,var(--bg))' }}>
         <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
           <div style={{ fontSize:44, marginBottom:10 }}>🏪</div>
           <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV Legal ES</div>
@@ -989,9 +990,8 @@ ${buildTicketHTML(s)}
               ['categories','🏷️','Categorías'],
               ['users','👥','Usuarios'],
               ['log','📜','Log operaciones'],
-              ['integrity','🔒','Integridad'],
-              ['rgpd','🛡️','RGPD'],
               ['compras','🛒','Compras'],
+              ['informes','📊','Informes'],
             ] as [typeof adminTab, string, string][]).map(([tab, icon, label]) => (
               <button key={tab} onClick={() => setAdminTab(tab)} style={{
                 width:'100%', padding:'8px 12px', borderRadius:6, border:'none',
@@ -1181,6 +1181,10 @@ ${buildTicketHTML(s)}
               <PurchasesModule token={token!} categories={categories} />
             )}
 
+            {adminTab === 'informes' && (
+              <ReportsModule token={token!} categories={categories} users={adminUsers} />
+            )}
+
           </div>
         </div>
       )}
@@ -1336,9 +1340,9 @@ ${buildTicketHTML(s)}
 
       {/* ── ARTÍCULO RÁPIDO MODAL ── */}
       {quickModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(26,29,46,.65)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
           onClick={e => { if(e.target===e.currentTarget) setQuickModal(false) }}>
-          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:380, boxShadow:'0 40px 80px rgba(0,0,0,.6)' }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:380, boxShadow:'0 8px 32px rgba(89,122,166,.2)' }}>
             <div style={{ fontSize:32, textAlign:'center' as const, marginBottom:8 }}>🏷️</div>
             <div style={{ fontSize:16, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Artículo rápido</div>
             <div style={{ fontSize:12, color:'var(--text2)', textAlign:'center' as const, marginBottom:20 }}>
@@ -1443,9 +1447,9 @@ ${buildTicketHTML(s)}
 
       {/* ── PESO MODAL — para artículos vendidos por kg ── */}
       {pesoModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.85)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
+        <div style={{ position:'fixed', inset:0, background:'rgba(26,29,46,.65)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }}
           onClick={e => { if(e.target===e.currentTarget){ setPesoModal(null); setPesoKg('') } }}>
-          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:340, boxShadow:'0 40px 80px rgba(0,0,0,.6)', textAlign:'center' }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:340, boxShadow:'0 8px 32px rgba(89,122,166,.2)', textAlign:'center' }}>
             <div style={{ fontSize:36, marginBottom:8 }}>⚖️</div>
             <div style={{ fontSize:16, fontWeight:700, marginBottom:2 }}>{pesoModal.emoji} {pesoModal.name}</div>
             <div style={{ fontSize:12, color:'var(--text2)', marginBottom:20 }}>
@@ -1496,8 +1500,8 @@ ${buildTicketHTML(s)}
 
       {/* ── APERTURA CAJA — FULLSCREEN MODAL ── */}
       {cajaChecked && !openCaja && (
-        <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(13,13,20,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
-          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 48px 96px rgba(0,0,0,.8)', textAlign:'center' }}>
+        <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(245,247,251,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 8px 48px rgba(89,122,166,.2)', textAlign:'center' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🏪</div>
             <div style={{ fontSize:22, fontWeight:700, marginBottom:4 }}>Apertura de Caja</div>
             <div style={{ color:'var(--text2)', fontSize:13, marginBottom:28 }}>
@@ -1546,9 +1550,9 @@ ${buildTicketHTML(s)}
 
       {/* ── CIERRE CAJA MODAL ── */}
       {cierreModal && openCaja && (
-        <div style={{ position:'fixed', inset:0, zIndex:700, background:'rgba(0,0,0,.8)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' }}
+        <div style={{ position:'fixed', inset:0, zIndex:700, background:'rgba(26,29,46,.6)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' }}
           onClick={e => { if(e.target===e.currentTarget) setCierreModal(false) }}>
-          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:32, width:420, boxShadow:'0 40px 80px rgba(0,0,0,.7)' }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:32, width:420, boxShadow:'0 8px 32px rgba(89,122,166,.2)' }}>
             <div style={{ fontSize:36, textAlign:'center' as const, marginBottom:8 }}>🔴</div>
             <div style={{ fontSize:18, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Cierre de Caja</div>
             <div style={{ color:'var(--text2)', fontSize:12, textAlign:'center' as const, marginBottom:20 }}>

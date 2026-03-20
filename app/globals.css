@@ -4,23 +4,21 @@
 
 :root {
   /* BASE CLARA */
-  --bg:#f5f7fb;                 /* fondo general claro */
-  --s1:#ffffff;                 /* cards */
-  --s2:#eef1f7;                 /* secciones */
-  --s3:#e4e8f2;                 /* hover suave */
+  --bg:#f5f7fb;
+  --s1:#ffffff;
+  --s2:#eef1f7;
+  --s3:#e4e8f2;
 
   /* BORDES */
   --border:#d9deea;
   --border2:#c7cde0;
 
   /* MARCA */
-  --accent:#ce1317;             /* rojo principal */
+  --accent:#ce1317;
   --accent-dim:rgba(206,19,23,.08);
 
-  --blue:#597aa6;               /* azul */
+  --blue:#597aa6;
   --blue-dim:rgba(89,122,166,.1);
-
-  --white:#ffffff;
 
   /* ESTADOS */
   --green:#3ecf8e;
@@ -32,23 +30,33 @@
   --amber:#f59f00;
   --amber-dim:rgba(245,159,0,.12);
 
-  /* TEXTOS (CLAVE DEL PROBLEMA) */
-  --text:#1a1d2e;               /* negro suave → SIEMPRE principal */
-  --text2:#5c6a8a;              /* secundario */
-  --text3:#9caac6;              /* desactivado */
+  --teal:#20c997;
+  --teal-dim:rgba(32,201,151,.12);
+
+  /* TEXTOS */
+  --text:#1a1d2e;
+  --text2:#5c6a8a;
+  --text3:#9caac6;
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
 html,body,#__next{height:100%;overflow:hidden}
-
 body{
   font-family:'DM Sans',system-ui,sans-serif;
   background:var(--bg);
   color:var(--text);
   font-size:14px;
-  -webkit-font-smoothing:antialiased
+  -webkit-font-smoothing:antialiased;
 }
-
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* Light theme helpers */
+.topbar-shadow { box-shadow: 0 1px 8px rgba(89,122,166,.1); }
+
+/* Make inputs readable on light bg */
+input, select, textarea {
+  color: var(--text) !important;
+}
+input::placeholder { color: var(--text3) !important; }

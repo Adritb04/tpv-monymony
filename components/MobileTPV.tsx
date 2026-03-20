@@ -8,10 +8,10 @@ const fmt  = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
 const fmtN = (n: number) => (n || 0).toFixed(2).replace('.', ',')
 
 const C = {
-  bg:'#0d0d14', s1:'#16161f', s2:'#1e1e2a', s3:'#262633',
-  border:'#2e2e42', accent:'#7c6fff', green:'#3ecf8e',
-  red:'#f03e3e', amber:'#f59f00', teal:'#20c997',
-  text:'#e2e2f0', text2:'#8888a8', text3:'#4a4a6a',
+  bg:'#f5f7fb', s1:'#ffffff', s2:'#eef1f7', s3:'#e4e8f2',
+  border:'#d9deea', accent:'#ce1317', green:'#3ecf8e',
+  red:'#ce1317', amber:'#f59f00', teal:'#20c997',
+  text:'#1a1d2e', text2:'#5c6a8a', text3:'#9caac6',
 }
 
 type MobileTab = 'tpv' | 'historial' | 'stock' | 'nuevo'

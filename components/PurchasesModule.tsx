@@ -14,8 +14,8 @@ const S = {
   btn:     (c='var(--accent)') => ({ padding:'8px 14px', borderRadius:6, border:'none', background:c, color: c==='var(--amber)'?'#000':'#fff', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:'inherit' }),
   btnOut:  { padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'none', color:'var(--text2)', cursor:'pointer', fontSize:11, fontFamily:'inherit' },
   badge:   (color: string, bg: string) => ({ display:'inline-flex', padding:'2px 8px', borderRadius:20, fontSize:10, fontWeight:600, color, background:bg }),
-  modal:   { position:'fixed' as const, inset:0, background:'rgba(0,0,0,.8)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' },
-  mBox:    { background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:680, maxHeight:'92vh', overflowY:'auto' as const, boxShadow:'0 40px 80px rgba(0,0,0,.6)' },
+  modal:   { position:'fixed' as const, inset:0, background:'rgba(26,29,46,.6)', zIndex:600, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' },
+  mBox:    { background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:680, maxHeight:'92vh', overflowY:'auto' as const, boxShadow:'0 8px 32px rgba(89,122,166,.2)' },
   th:      { textAlign:'left' as const, fontSize:10, color:'var(--text2)', fontWeight:600, padding:'6px 10px', borderBottom:'1px solid var(--border)', textTransform:'uppercase' as const, letterSpacing:'.05em' },
   td:      { padding:'9px 10px', borderBottom:'1px solid var(--border)', fontSize:12, verticalAlign:'middle' as const },
 }
