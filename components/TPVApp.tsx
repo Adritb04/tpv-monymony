@@ -686,7 +686,7 @@ ${buildTicketHTML(s)}
     <div style={S.app}>
       {/* TOPBAR */}
       <div style={S.topbar}>
-        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>🏪 TPV</span>
+        <img src="/logo.png" alt="Logo" style={{ height:32, width:'auto', objectFit:'contain' }} />
         <span style={{ ...S.badge('var(--green)','var(--green-dim)'), fontSize:9 }}>✓ Legal ES</span>
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
@@ -1127,28 +1127,7 @@ ${buildTicketHTML(s)}
             )}
 
             {/* Integrity tab */}
-            {adminTab === 'integrity' && (
-              <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-                <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', flexShrink:0 }}>
-                  <span style={{ fontSize:16, fontWeight:700, marginRight:'auto' }}>🔒 Integridad Verifactu</span>
-                  <button onClick={() => loadAdminTab('integrity')} style={S.btn('var(--amber)')}>🔍 Verificar cadena</button>
-                </div>
-                <div style={{ flex:1, overflowY:'auto', padding:'16px 20px' }}>
-                  {integrity && (
-                    <div style={{ ...S.card, marginBottom:16, background: integrity.ok ? 'var(--green-dim)' : 'var(--red-dim)', border:`1px solid ${integrity.ok?'rgba(62,207,142,.3)':'rgba(240,62,62,.3)'}`, color: integrity.ok ? 'var(--green)' : 'var(--red)' }}>
-                      {integrity.ok ? `✅ Cadena verificada — ${integrity.total} tickets íntegros. Sin anomalías.`
-                        : `⚠️ ${integrity.broken} anomalía(s) en: ${integrity.broken_tickets?.join(', ')}`}
-                    </div>
-                  )}
-                  <div style={{ ...S.card, fontSize:12, color:'var(--text2)', lineHeight:1.8, maxWidth:600 }}>
-                    <span style={{ color:'var(--amber)', fontWeight:700 }}>¿Qué verifica este sistema?</span><br/>
-                    Cada ticket genera un <b style={{ color:'var(--text)' }}>hash SHA-256 encadenado server-side</b> que incluye el hash anterior, el ID del ticket, el NIF, el importe y el timestamp.<br/><br/>
-                    Al ejecutarse en servidor (Node.js + Supabase), el hash es computado y guardado de forma <b style={{ color:'var(--text)' }}>inalterable</b> — nadie puede modificar un ticket sin que la cadena se rompa.<br/><br/>
-                    Conforme al <b style={{ color:'var(--amber)' }}>Reglamento Verifactu</b> y los principios de inalterabilidad de la <b style={{ color:'var(--amber)' }}>Ley 11/2021</b>.
-                  </div>
-                </div>
-              </div>
-            )}
+           
 
             {/* RGPD tab */}
             {adminTab === 'rgpd' && (
