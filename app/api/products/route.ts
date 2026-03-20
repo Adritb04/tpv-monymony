@@ -9,6 +9,21 @@ export async function GET(req: NextRequest) {
   const auth = getAuthFromRequest(req)
   if (!auth) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
 
+  const { searchParams } = new URL(req.url)
+  const barcode = searchParams.get('barcode')
+
+  // Barcode lookup — returns single product
+  if (barcode) {
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('barcode', barcode)
+      .eq('active', true)
+      .single()
+    if (error || !data) return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
+    return NextResponse.json({ data })
+  }
+
   const [{ data: products, error }, { data: categories }] = await Promise.all([
     supabaseAdmin.from('products').select('*').order('name'),
     supabaseAdmin.from('categories').select('id, name, icon'),
@@ -40,6 +55,7 @@ export async function POST(req: NextRequest) {
       cost_price: body.cost_price || 0,
       stock: body.stock || 0,
       unit_type: body.unit_type || 'unidad',
+      barcode: body.barcode || null,
       active: true,
     })
     .select()
@@ -57,16 +73,16 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json()
   const { id, ...fields } = body
-  const { data, error } = await supabaseAdmin
+
+  const { error } = await supabaseAdmin
     .from('products')
     .update(fields)
     .eq('id', id)
-    .select()
-    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
   await addLog('admin', 'Producto editado', body.name || String(id), auth)
-  return NextResponse.json({ data })
+  return NextResponse.json({ data: { id, ...fields } })
 }
 
 export async function DELETE(req: NextRequest) {
