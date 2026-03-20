@@ -1130,32 +1130,7 @@ ${buildTicketHTML(s)}
            
 
             {/* RGPD tab */}
-            {adminTab === 'rgpd' && (
-              <div style={{ flex:1, overflowY:'auto', padding:'16px 20px' }}>
-                <div style={{ ...S.card, fontSize:12, color:'var(--text2)', lineHeight:1.9, maxWidth:700 }}>
-                  <span style={{ color:'var(--amber)', fontWeight:700 }}>Estado RGPD / LOPDGDD</span><br/><br/>
-                  ✅ Autenticación con contraseña hasheada (bcrypt cost=12)<br/>
-                  ✅ Control de acceso por roles (LOPDGDD Art. 32)<br/>
-                  ✅ Hash encadenado server-side inalterable (Ley 11/2021)<br/>
-                  ✅ Log de operaciones con trazabilidad completa<br/>
-                  ✅ Tickets rectificativos sin borrado (trazabilidad total)<br/>
-                  ✅ Datos almacenados en Supabase (servidores en UE disponibles)<br/>
-                  ✅ Exportación JSON para copias de seguridad<br/>
-                  ✅ Soft-delete de usuarios (no se borran, mantienen el historial)<br/><br/>
-                  <span style={{ color:'var(--amber)', fontWeight:700 }}>Conservación obligatoria:</span><br/>
-                  Mínimo 4 años (LGT Art. 66-68) · Recomendado 6 años (Cco Art. 30)<br/><br/>
-                  <span style={{ color:'var(--amber)', fontWeight:700 }}>Responsable:</span> {NEGOCIO.nombre} · NIF {NEGOCIO.nif} · {NEGOCIO.email}<br/><br/>
-                  <span style={{ color:'var(--red)' }}>⚠️ Pendiente para cumplimiento 100%:</span><br/>
-                  · Registro de Actividades de Tratamiento (RAT) — documento físico/digital firmado por el responsable<br/>
-                  · Contrato con Supabase (DPA) — ir a supabase.com → Settings → Legal → Data Processing Agreement<br/>
-                  · Envío automático AEAT (Veri*factu) — requiere certificado digital de empresa
-                </div>
-                <div style={{ marginTop:14 }}>
-                  <button onClick={() => setRgpdModal(true)} style={S.btn('var(--amber)')}>📄 Ver política de privacidad</button>
-                </div>
-              </div>
-            )}
-
+            
             {adminTab === 'compras' && (
               <PurchasesModule token={token!} categories={categories} />
             )}
