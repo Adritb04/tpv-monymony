@@ -414,6 +414,7 @@ export default function TPVApp() {
 
   const doLogout = () => {
     setToken(null); setUser(null); setCart([])
+    setOpenCaja(null); setCajaChecked(false)
     localStorage.removeItem('tpv_token')
     localStorage.removeItem('tpv_user')
   }
@@ -1511,7 +1512,7 @@ ${buildTicketHTML(s)}
       )}
 
       {/* ── APERTURA CAJA — FULLSCREEN MODAL ── */}
-      {cajaChecked && !openCaja && (
+      {token && user && cajaChecked && !openCaja && (
         <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(245,247,251,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
           <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 8px 48px rgba(89,122,166,.2)', textAlign:'center' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🏪</div>
