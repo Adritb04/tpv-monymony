@@ -638,7 +638,7 @@ export default function TPVApp() {
   const filteredPrds = products.filter(p =>
     p.active &&
     (activeCat === 0 || p.category_id === activeCat) &&
-    (!search || p.name.toLowerCase().includes(search.toLowerCase()))
+    (!search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.barcode && p.barcode.includes(search.trim())))
   )
 
   // ── PRINT TICKET — optimizado para impresora térmica 80mm ──
@@ -692,13 +692,10 @@ ${buildTicketHTML(s)}
       <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
         background:'linear-gradient(135deg,#f0f4ff,var(--bg))' }}>
         <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
-          <div style={{ fontSize:44, marginBottom:10 }}>🏪</div>
-          <div style={{ fontSize:21, fontWeight:700, marginBottom:4 }}>TPV Legal ES</div>
+          <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:80, width:'100%', marginBottom:16, objectFit:'contain' }} />
           <div style={{ color:'var(--text2)', fontSize:12, marginBottom:24 }}>Introduce tus credenciales</div>
           <LoginForm onLogin={doLogin} loading={loading} />
-          <div style={{ fontSize:10, color:'var(--text3)', marginTop:16 }}>
-            Demo: admin / admin123 · encargado / enc123 · cajero1 / caj123
-          </div>
+         
         </div>
         {toast && <Toast msg={toast.msg} type={toast.type} />}
       </div>
@@ -723,10 +720,9 @@ ${buildTicketHTML(s)}
   // ═══════════════════════════════════════════════════════════════
   return (
     <div style={S.app}>
-      {/* TOPBAR */}
+     {/* TOPBAR */}
       <div style={S.topbar}>
-        <span style={{ fontWeight:700, fontSize:15, color:'var(--accent)', marginRight:4 }}>🏪 TPV</span>
-        <span style={{ ...S.badge('var(--green)','var(--green-dim)'), fontSize:9 }}>✓ Legal ES</span>
+        <img src="/logos/LOGO_OFICIAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:28, width:'auto', objectFit:'contain' }} />
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
