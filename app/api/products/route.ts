@@ -72,18 +72,16 @@ export async function PUT(req: NextRequest) {
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: 403 })
 
   const body = await req.json()
-  const { id, ...fields } = body
+  const { id, category, ...fields } = body
 
-  // Update without .select() — avoids schema cache bug with category column
   const { error } = await supabaseAdmin
     .from('products')
     .update(fields)
     .eq('id', id)
 
-  if (error) { console.error('PUT products error:', error); return NextResponse.json({ error: error.message }, { status: 500 }) }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await addLog('admin', 'Producto editado', body.name || String(id), auth)
-  // Return the submitted data directly — frontend already has it
   return NextResponse.json({ data: { id, ...fields } })
 }
 
