@@ -7,7 +7,7 @@ import { addLog } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
   const auth = getAuthFromRequest(req)
-  const perm = requireRole(auth, ['admin', 'encargado'])
+  const perm = requireRole(auth, ['admin', 'encargado', 'cajero'])
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: 403 })
 
   const { searchParams } = new URL(req.url)
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const auth = getAuthFromRequest(req)
-  const perm = requireRole(auth, ['admin', 'encargado'])
+  const perm = requireRole(auth, ['admin', 'encargado', 'cajero'])
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: 403 })
 
   const body = await req.json()
