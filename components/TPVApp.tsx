@@ -535,15 +535,16 @@ export default function TPVApp() {
     setLoading(true)
     try {
       const items = cart.map(i => {
-        const lineTotal = i.price * i.qty
+        // kg items: price = total already (kg × €/kg), qty stored as weight
+        const lineTotal = i.unit_type === 'kg' ? i.price : i.price * i.qty
         const lineBase  = i.regime === 'rebu'
-          ? lineTotal - Math.max(0, i.price - i.cost_price) * i.qty * i.iva_rate / (100 + i.iva_rate)
+          ? lineTotal - Math.max(0, i.price - i.cost_price) * i.iva_rate / (100 + i.iva_rate)
           : lineTotal / (1 + i.iva_rate / 100)
         return {
           product_id: i.id,
           name: i.unit_type === 'kg' ? `${i.name} (${i.qty} kg)` : i.name,
           emoji: i.emoji,
-          price: i.price, qty: i.unit_type === 'kg' ? 1 : i.qty,
+          price: lineTotal, qty: 1,
           regime: i.regime, iva_rate: i.iva_rate, cost_price: i.cost_price,
           unit_type: i.unit_type || 'unidad',
           line_total: lineTotal,

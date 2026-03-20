@@ -48,9 +48,35 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
 
   // Form state
   const [form, setForm]   = useState<any>({})
-  const [items, setItems] = useState<any[]>([{ name:'', emoji:'📦', category_id:'', qty:1, unit_cost:0, sale_price:0, iva_rate:21 }])
+  const [items, setItems] = useState<any[]>([{ name:'', emoji:'📦', category_id:'', qty:1, unit_cost:0, sale_price:0, iva_rate:21, mode:'nuevo', product_id:null }])
+  const [suppliers, setSuppliers] = useState<any[]>([])
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [newSupplier, setNewSupplier] = useState<any>({})
+  const [products, setProducts] = useState<any[]>([])
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000) }
+
+  const selectSupplier = (s: any) => {
+    setF('supplier_name', s.name)
+    setF('supplier_nif', s.nif)
+    setF('supplier_phone', s.phone || '')
+    setF('supplier_email', s.email || '')
+  }
+
+  const selectExistingProduct = (idx: number, productId: string) => {
+    if (!productId) {
+      setItem(idx, 'mode', 'nuevo')
+      setItem(idx, 'product_id', null)
+      return
+    }
+    const p = products.find((x: any) => String(x.id) === productId)
+    if (!p) return
+    setItems(prev => prev.map((item, i) => i === idx ? {
+      ...item, mode:'existente', product_id: p.id,
+      name: p.name, emoji: p.emoji, category_id: p.category_id || '',
+      sale_price: parseFloat(p.price), iva_rate: p.iva_rate,
+    } : item))
+  }
 
   const load = useCallback(async () => {
     if (!token) return
@@ -70,6 +96,26 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
   }, [token, tab])
 
   useEffect(() => { load() }, [load])
+
+  // Load suppliers from localStorage
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem('tpv_suppliers')
+      if (s) setSuppliers(JSON.parse(s))
+    } catch {}
+  }, [])
+
+  const saveSuppliers = (list: any[]) => {
+    setSuppliers(list)
+    localStorage.setItem('tpv_suppliers', JSON.stringify(list))
+  }
+
+  // Load products for existing product selector
+  useEffect(() => {
+    if (!token) return
+    fetch('/api/products', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json()).then(j => setProducts(j.data || [])).catch(() => {})
+  }, [token])
 
   const loadDetail = async (type: Tab, id: number) => {
     setDetailId(id)
@@ -283,7 +329,19 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
             <h3 style={{ fontSize:17, fontWeight:700, marginBottom:18 }}>🧾 Registrar Factura de Compra</h3>
 
             <div style={{ background:'var(--s2)', borderRadius:8, padding:12, marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'var(--amber)', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:10 }}>Datos del Proveedor y Factura</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                <span style={{ fontSize:11, fontWeight:700, color:'var(--amber)', textTransform:'uppercase' as const, letterSpacing:'.05em' }}>Proveedor y Factura</span>
+                <div style={{ display:'flex', gap:6 }}>
+                  {suppliers.length > 0 && (
+                    <select style={{ ...S.input, width:'auto', fontSize:11, cursor:'pointer' }}
+                      onChange={e => { if(e.target.value) selectSupplier(suppliers[parseInt(e.target.value)]) }}>
+                      <option value="">📋 Seleccionar proveedor guardado</option>
+                      {suppliers.map((s: any, i: number) => <option key={i} value={i}>{s.name} — {s.nif}</option>)}
+                    </select>
+                  )}
+                  <button onClick={() => setShowSupplierModal(true)} style={{ ...S.btnOut, fontSize:10, color:'var(--green)', borderColor:'var(--green-dim)', whiteSpace:'nowrap' as const }}>+ Guardar proveedor</button>
+                </div>
+              </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div><label style={S.label}>Nombre proveedor *</label><input style={S.input} value={form.supplier_name||''} onChange={e => setF('supplier_name', e.target.value)} placeholder="Distribuidor S.A." /></div>
                 <div><label style={S.label}>NIF / CIF proveedor *</label><input style={S.input} value={form.supplier_nif||''} onChange={e => setF('supplier_nif', e.target.value)} placeholder="B12345678" /></div>
@@ -296,15 +354,35 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
 
             <div style={{ marginBottom:12 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                <span style={{ fontSize:11, fontWeight:700, color:'var(--amber)', textTransform:'uppercase', letterSpacing:'.05em' }}>Artículos a crear ({items.length})</span>
-                <button onClick={() => setItems(p => [...p, { name:'', emoji:'📦', category_id:'', qty:1, unit_cost:0, sale_price:0, iva_rate:21 }])} style={{ ...S.btnOut, fontSize:11, color:'var(--green)', borderColor:'var(--green-dim)' }}>+ Añadir artículo</button>
+                <span style={{ fontSize:11, fontWeight:700, color:'var(--amber)', textTransform:'uppercase' as const, letterSpacing:'.05em' }}>Artículos ({items.length})</span>
+                <button onClick={() => setItems(p => [...p, { name:'', emoji:'📦', category_id:'', qty:1, unit_cost:0, sale_price:0, iva_rate:21, mode:'nuevo', product_id:null }])} style={{ ...S.btnOut, fontSize:11, color:'var(--green)', borderColor:'var(--green-dim)' }}>+ Añadir artículo</button>
               </div>
               {items.map((item, idx) => (
                 <div key={idx} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:10, marginBottom:8 }}>
+                  {/* Mode selector */}
+                  <div style={{ display:'flex', gap:6, marginBottom:8 }}>
+                    {(['nuevo','existente'] as const).map(m => (
+                      <button key={m} type="button" onClick={() => selectExistingProduct(idx, m==='nuevo'?'':item.product_id||'')}
+                        style={{ padding:'4px 12px', borderRadius:20, border:`1px solid ${item.mode===m?'var(--accent)':'var(--border)'}`,
+                          background: item.mode===m?'var(--accent-dim)':'none',
+                          color: item.mode===m?'var(--accent)':'var(--text2)',
+                          cursor:'pointer', fontSize:11, fontWeight:500, fontFamily:'inherit' }}>
+                        {m==='nuevo'?'➕ Artículo nuevo':'📦 Producto existente'}
+                      </button>
+                    ))}
+                    {item.mode==='existente' && (
+                      <select style={{ ...S.input, flex:1, fontSize:11 }}
+                        value={item.product_id||''}
+                        onChange={e => selectExistingProduct(idx, e.target.value)}>
+                        <option value="">Seleccionar producto...</option>
+                        {products.map((p: any) => <option key={p.id} value={p.id}>{p.emoji} {p.name} — {(parseFloat(p.price)||0).toFixed(2).replace('.',',')} €</option>)}
+                      </select>
+                    )}
+                  </div>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:8 }}>
                     <div style={{ gridColumn:'1/-1', display:'flex', gap:8 }}>
-                      <div style={{ width:60 }}><label style={S.label}>Emoji</label><input style={S.input} value={item.emoji} onChange={e => setItem(idx,'emoji',e.target.value)} maxLength={4} /></div>
-                      <div style={{ flex:1 }}><label style={S.label}>Nombre del artículo *</label><input style={S.input} value={item.name} onChange={e => setItem(idx,'name',e.target.value)} placeholder="Nombre del producto" /></div>
+                      <div style={{ width:60 }}><label style={S.label}>Emoji</label><input style={S.input} value={item.emoji} onChange={e => setItem(idx,'emoji',e.target.value)} maxLength={4} readOnly={item.mode==='existente'} /></div>
+                      <div style={{ flex:1 }}><label style={S.label}>Nombre *</label><input style={S.input} value={item.name} onChange={e => setItem(idx,'name',e.target.value)} placeholder="Nombre del producto" readOnly={item.mode==='existente'} /></div>
                       <div style={{ width:40, display:'flex', alignItems:'flex-end', paddingBottom:2 }}>
                         {items.length > 1 && <button onClick={() => setItems(p => p.filter((_,i) => i !== idx))} style={{ ...S.btnOut, color:'var(--red)', borderColor:'var(--red-dim)', fontSize:12 }}>✕</button>}
                       </div>
