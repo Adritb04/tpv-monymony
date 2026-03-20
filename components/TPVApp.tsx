@@ -436,12 +436,13 @@ export default function TPVApp() {
     setCart(prev => {
       // kg products always add as new line (different weight each time)
       if (prd.unit_type === 'kg') {
+        // price = price_per_kg, qty = kg weight, total = price * qty
         return [...prev, {
           id: prd.id, name: prd.name, emoji: prd.emoji,
           price, iva_rate: prd.iva_rate,
           regime: prd.regime, cost_price: parseFloat(prd.cost_price || 0),
           unit_type: 'kg', qty,
-          label: `${qty} kg × ${parseFloat(prd.price).toFixed(2).replace('.',',')} €/kg`,
+          label: `${qty} kg × ${price.toFixed(2).replace('.',',')} €/kg`,
         }]
       }
       const ex = prev.find(i => i.id === prd.id && !i.unit_type_kg)
@@ -466,7 +467,7 @@ export default function TPVApp() {
       id,
       name: quickForm.name,
       emoji: '🏷️',
-      price: quickForm.unit_type === 'kg' ? price * quickForm.qty : price,
+      price: price,  // always price per unit or price per kg
       iva_rate: quickForm.iva_rate,
       regime: 'iva',
       cost_price: 0,
@@ -484,8 +485,8 @@ export default function TPVApp() {
     const kg = parseFloat(pesoKg.replace(',', '.'))
     if (isNaN(kg) || kg <= 0) return
     const pricePerKg = parseFloat(pesoModal.price)
-    const totalPrice = Math.round(kg * pricePerKg * 100) / 100
-    addToCartDirect(pesoModal, kg, totalPrice)
+    // Store price_per_kg as price, qty as kg — total = price * qty
+    addToCartDirect(pesoModal, kg, pricePerKg)
     setPesoModal(null)
     setPesoKg('')
   }
@@ -498,7 +499,7 @@ export default function TPVApp() {
     const groups: Record<string, any> = {}
     cart.forEach(i => {
       // For kg items: price = total already calculated, qty = weight in kg
-      const total = i.unit_type === 'kg' ? i.price : i.price * i.qty
+      const total = i.price * i.qty  // kg: price=€/kg, qty=kg → total=€; unidad: price=€/u, qty=u → total=€
       if (i.regime === 'rebu') {
         const margin = Math.max(0, i.price - i.cost_price) * i.qty
         const iva    = margin * i.iva_rate / (100 + i.iva_rate)
@@ -536,16 +537,15 @@ export default function TPVApp() {
     setLoading(true)
     try {
       const items = cart.map(i => {
-        // kg items: price = total already (kg × €/kg), qty stored as weight
-        const lineTotal = i.unit_type === 'kg' ? i.price : i.price * i.qty
+        const lineTotal = i.price * i.qty  // price=€/kg * qty=kg OR price=€/u * qty=u
         const lineBase  = i.regime === 'rebu'
           ? lineTotal - Math.max(0, i.price - i.cost_price) * i.iva_rate / (100 + i.iva_rate)
           : lineTotal / (1 + i.iva_rate / 100)
         return {
           product_id: i.id,
-          name: i.unit_type === 'kg' ? `${i.name} (${i.qty} kg)` : i.name,
+          name: i.unit_type === 'kg' ? `${i.name} (${Number(i.qty).toFixed(3)} kg)` : i.name,
           emoji: i.emoji,
-          price: lineTotal, qty: 1,
+          price: i.price, qty: i.unit_type === 'kg' ? i.qty : i.qty,
           regime: i.regime, iva_rate: i.iva_rate, cost_price: i.cost_price,
           unit_type: i.unit_type || 'unidad',
           line_total: lineTotal,
@@ -745,7 +745,7 @@ ${buildTicketHTML(s)}
             color: view==='caja' ? '#fff' : 'var(--text2)',
           }}>💰 Caja</button>
           {(user.role === 'admin' || user.role === 'encargado' || user.role === 'cajero') && (
-            <button onClick={() => { setAdminTab(user.role === 'cajero' ? 'compras' : adminTab); setView('admin') }} style={{
+            <button onClick={() => { setAdminTab(user.role === 'cajero' ? 'products' : adminTab); setView('admin') }} style={{
               padding:'5px 12px', borderRadius:6, border:'none', cursor:'pointer', fontSize:12, fontWeight:500, fontFamily:'inherit',
               background: view==='admin' ? 'var(--amber)' : 'none',
               color: view==='admin' ? '#000' : 'var(--text2)',
@@ -1034,7 +1034,7 @@ ${buildTicketHTML(s)}
               ['compras','🛒','Compras'],
               ['informes','📊','Informes'],
             ] as [typeof adminTab, string, string][]).filter(([tab]) => {
-              if (user.role === 'cajero') return ['compras'].includes(tab)
+              if (user.role === 'cajero') return ['products', 'compras'].includes(tab)
               if (user.role === 'encargado') return ['products','compras','informes'].includes(tab)
               return true // admin sees all
             }).map(([tab, icon, label]) => (
