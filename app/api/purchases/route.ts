@@ -64,30 +64,49 @@ export async function POST(req: NextRequest) {
 
   if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
 
-  // Create products and purchase_items
+  // Create/update products and purchase_items
   const createdProducts = []
   for (const item of items) {
-    // Create product
-    const { data: product } = await supabaseAdmin
-      .from('products')
-      .insert({
-        name: item.name, emoji: item.emoji || '📦',
-        category_id: item.category_id,
-        price: item.sale_price, regime: 'iva',
-        iva_rate: item.iva_rate || 21,
-        cost_price: item.unit_cost,
-        stock: item.qty, active: true,
-      })
-      .select().single()
+    let productId: number | null = item.product_id || null
 
-    if (product) {
-      createdProducts.push(product)
-      // Create purchase_item linking purchase ↔ product
+    if (productId) {
+      // Existing product — only increment stock
+      const { data: existing } = await supabaseAdmin
+        .from('products').select('stock').eq('id', productId).single()
+      if (existing) {
+        await supabaseAdmin
+          .from('products')
+          .update({ stock: (existing.stock || 0) + (item.qty || 1) })
+          .eq('id', productId)
+        createdProducts.push({ id: productId, name: item.name, _existing: true })
+      }
+    } else {
+      // New product — create it
+      const { data: product } = await supabaseAdmin
+        .from('products')
+        .insert({
+          name: item.name, emoji: item.emoji || '📦',
+          category_id: item.category_id || null,
+          price: item.sale_price, regime: 'iva',
+          iva_rate: item.iva_rate || 21,
+          cost_price: item.unit_cost,
+          stock: item.qty, active: true,
+        })
+        .select().single()
+
+      if (product) {
+        productId = product.id
+        createdProducts.push(product)
+      }
+    }
+
+    // Create purchase_item record either way
+    if (productId) {
       await supabaseAdmin.from('purchase_items').insert({
         purchase_id: purchase.id,
-        product_id: product.id,
+        product_id: productId,
         name: item.name, emoji: item.emoji || '📦',
-        category_id: item.category_id,
+        category_id: item.category_id || null,
         qty: item.qty, unit_cost: item.unit_cost,
         sale_price: item.sale_price, iva_rate: item.iva_rate || 21,
       })
