@@ -1,0 +1,11 @@
+{
+  "name": "TPV MONY MONY",
+  "short_name": "MONY MONY",
+  "icons": [
+    { "src": "/logos/ICONO_CORPORATIVO.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "theme_color": "#ce1317",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/"
+}
