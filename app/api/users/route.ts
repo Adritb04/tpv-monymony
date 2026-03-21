@@ -7,6 +7,20 @@ import { getAuthFromRequest, requireRole } from '@/lib/auth'
 import { addLog } from '@/lib/log'
 
 export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url)
+  const isPublic = searchParams.get('public') === 'true'
+
+  // Public endpoint for login screen — only returns minimal safe fields
+  if (isPublic) {
+    const { data, error } = await supabaseAdmin
+      .from('users')
+      .select('id, username, name, role, active')
+      .eq('active', true)
+      .order('name')
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ data })
+  }
+
   const auth = getAuthFromRequest(req)
   const perm = requireRole(auth, ['admin'])
   if (!perm.ok) return NextResponse.json({ error: perm.error }, { status: 403 })

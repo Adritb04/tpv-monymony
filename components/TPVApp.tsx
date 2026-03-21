@@ -703,20 +703,7 @@ ${buildTicketHTML(s)}
   // RENDER: LOGIN
   // ═══════════════════════════════════════════════════════════════
   if (!token || !user) {
-    return (
-      <div style={{ ...S.app, alignItems:'center', justifyContent:'center',
-        background:'linear-gradient(135deg,#f0f4ff,var(--bg))' }}>
-        <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:40, width:400, boxShadow:'0 48px 96px rgba(0,0,0,.7)', textAlign:'center' }}>
-          <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:80, width:'100%', marginBottom:16, objectFit:'contain' }} />
-          <div style={{ color:'var(--text2)', fontSize:12, marginBottom:24 }}>Introduce tus credenciales</div>
-          <LoginForm onLogin={doLogin} loading={loading} />
-          <div style={{ fontSize:10, color:'var(--text3)', marginTop:16 }}>
-            Demo: admin / admin123 · encargado / enc123 · cajero1 / caj123
-          </div>
-        </div>
-        {toast && <Toast msg={toast.msg} type={toast.type} />}
-      </div>
-    )
+    return <LoginScreen onLogin={doLogin} loading={loading} toast={toast} />
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1674,26 +1661,99 @@ ${buildTicketHTML(s)}
 }
 
 // ── Sub-components ─────────────────────────────────────────────
-function LoginForm({ onLogin, loading }: { onLogin: (u: string, p: string) => void; loading: boolean }) {
-  const [u, setU] = useState('')
-  const [p, setP] = useState('')
+function LoginScreen({ onLogin, loading, toast }: { onLogin: (u: string, p: string) => void; loading: boolean; toast: any }) {
+  const [users, setUsers] = useState<any[]>([])
+  const [selected, setSelected] = useState<any>(null)
+  const [password, setPassword] = useState('')
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const pwRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    fetch('/api/users?public=true')
+      .then(r => r.json())
+      .then(j => { setUsers((j.data || []).filter((u:any) => u.active)); setLoadingUsers(false) })
+      .catch(() => setLoadingUsers(false))
+  }, [])
+
+  useEffect(() => {
+    if (selected) setTimeout(() => pwRef.current?.focus(), 100)
+  }, [selected])
+
+  const roleColor = (role: string) => role==='admin'?'var(--amber)':role==='encargado'?'var(--teal)':'var(--accent)'
+  const roleLabel = (role: string) => role==='admin'?'Admin':role==='encargado'?'Encargado':'Cajero'
+
   return (
-    <div style={{ textAlign:'left' }}>
-      {[['Usuario', u, setU, 'text', 'cajero1'], ['Contraseña', p, setP, 'password', '••••••']].map(([label, val, set, type, ph]) => (
-        <div key={label as string} style={{ marginBottom:10 }}>
-          <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:4 }}>{label as string}</label>
-          <input
-            style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'9px 12px', color:'var(--text)', fontFamily:'inherit', fontSize:13, outline:'none' }}
-            type={type as string} value={val as string} placeholder={ph as string}
-            onChange={e => (set as Function)(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && onLogin(u, p)}
-          />
+    <div style={{ minHeight:'100vh', background:'linear-gradient(135deg,#f0f4ff,var(--bg))', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"'DM Sans',system-ui,sans-serif" }}>
+      <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:80, width:'auto', marginBottom:32, objectFit:'contain' }} />
+
+      {!selected ? (
+        <>
+          <div style={{ fontSize:14, color:'var(--text2)', marginBottom:24 }}>Selecciona tu perfil</div>
+          {loadingUsers ? (
+            <div style={{ color:'var(--text3)', fontSize:13 }}>Cargando...</div>
+          ) : (
+            <div style={{ display:'flex', gap:16, flexWrap:'wrap', justifyContent:'center', maxWidth:600 }}>
+              {users.map(u => (
+                <div key={u.id} onClick={() => { setSelected(u); setPassword('') }}
+                  style={{ background:'var(--s1)', border:'2px solid var(--border)', borderRadius:16, padding:'24px 20px', width:140, textAlign:'center', cursor:'pointer', transition:'all .15s', boxShadow:'0 2px 12px rgba(89,122,166,.08)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor='var(--accent)'; e.currentTarget.style.transform='translateY(-3px)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(89,122,166,.15)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.transform='none'; e.currentTarget.style.boxShadow='0 2px 12px rgba(89,122,166,.08)' }}>
+                  {/* Avatar */}
+                  <div style={{ width:72, height:72, borderRadius:'50%', margin:'0 auto 12px', overflow:'hidden', border:`3px solid ${roleColor(u.role)}`, background:'var(--s2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <img
+                      src={`/avatars/${u.username}.jpg`}
+                      alt={u.name}
+                      style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                      onError={e => {
+                        const el = e.currentTarget
+                        el.style.display = 'none'
+                        const parent = el.parentElement!
+                        parent.innerHTML = `<span style="font-size:28px">${u.role==='admin'?'👑':u.role==='encargado'?'🔑':'👤'}</span>`
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>{u.name}</div>
+                  <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, fontWeight:600, color: roleColor(u.role), background: u.role==='admin'?'var(--amber-dim)':u.role==='encargado'?'var(--teal-dim)':'var(--accent-dim)' }}>
+                    {roleLabel(u.role)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:18, padding:36, width:340, textAlign:'center', boxShadow:'0 8px 40px rgba(89,122,166,.15)' }}>
+          {/* Selected user avatar */}
+          <div style={{ width:80, height:80, borderRadius:'50%', margin:'0 auto 12px', overflow:'hidden', border:`3px solid ${roleColor(selected.role)}`, background:'var(--s2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <img src={`/avatars/${selected.username}.jpg`} alt={selected.name}
+              style={{ width:'100%', height:'100%', objectFit:'cover' }}
+              onError={e => { e.currentTarget.style.display='none'; e.currentTarget.parentElement!.innerHTML=`<span style="font-size:32px">${selected.role==='admin'?'👑':selected.role==='encargado'?'🔑':'👤'}</span>` }} />
+          </div>
+          <div style={{ fontWeight:700, fontSize:18, marginBottom:4 }}>{selected.name}</div>
+          <span style={{ fontSize:11, padding:'2px 10px', borderRadius:20, fontWeight:600, color:roleColor(selected.role), background:selected.role==='admin'?'var(--amber-dim)':selected.role==='encargado'?'var(--teal-dim)':'var(--accent-dim)', display:'inline-block', marginBottom:24 }}>
+            {roleLabel(selected.role)}
+          </span>
+          <div style={{ marginBottom:16 }}>
+            <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>Contraseña</label>
+            <input ref={pwRef}
+              style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'11px 14px', color:'var(--text)', fontFamily:'inherit', fontSize:16, outline:'none', textAlign:'center', letterSpacing:'0.1em' }}
+              type="password" value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••"
+              onKeyDown={e => e.key === 'Enter' && password && onLogin(selected.username, password)}
+            />
+          </div>
+          <button onClick={() => onLogin(selected.username, password)} disabled={loading || !password}
+            style={{ width:'100%', padding:12, borderRadius:8, border:'none', background: password?'var(--accent)':'var(--s3)', color: password?'#fff':'var(--text3)', cursor: password?'pointer':'not-allowed', fontFamily:'inherit', fontSize:14, fontWeight:700, marginBottom:10, transition:'all .15s' }}>
+            {loading ? '...' : 'Entrar'}
+          </button>
+          <button onClick={() => { setSelected(null); setPassword('') }}
+            style={{ background:'none', border:'none', color:'var(--text2)', cursor:'pointer', fontSize:12, fontFamily:'inherit' }}>
+            ← Cambiar perfil
+          </button>
         </div>
-      ))}
-      <button onClick={() => onLogin(u, p)} disabled={loading}
-        style={{ width:'100%', padding:11, borderRadius:6, border:'none', background:'var(--accent)', color:'#fff', cursor:'pointer', fontFamily:'inherit', fontSize:14, fontWeight:600, marginTop:4 }}>
-        {loading ? '...' : 'Iniciar sesión'}
-      </button>
+      )}
+
+      {toast && <Toast msg={toast.msg} type={toast.type} />}
     </div>
   )
 }
