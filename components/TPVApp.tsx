@@ -400,7 +400,16 @@ export default function TPVApp() {
     } catch (e: any) { showToast(e.message, 'err') }
   }, [token, loadProducts])
 
-  useEffect(() => { if (view === 'admin') loadAdminTab(adminTab) }, [view, adminTab, loadAdminTab])
+  useEffect(() => {
+    if (view === 'admin') {
+      loadAdminTab(adminTab)
+      // Auto-refresh log every 30s
+      if (adminTab === 'log') {
+        const interval = setInterval(() => loadAdminTab('log'), 30000)
+        return () => clearInterval(interval)
+      }
+    }
+  }, [view, adminTab, loadAdminTab])
 
   // ── LOGIN ──
   const doLogin = async (username: string, password: string) => {
