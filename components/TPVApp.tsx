@@ -389,6 +389,7 @@ export default function TPVApp() {
         const res = await api.users.list(token)
         setAdminUsers(res.data)
       } else if (tab === 'log') {
+        setOpLog([]) // clear stale state before fetch
         const res = await fetch('/api/log?limit=200&_t=' + Date.now(), {
           headers: { Authorization: `Bearer ${token}` }
         })
