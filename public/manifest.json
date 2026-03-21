@@ -2,8 +2,8 @@
   "name": "TPV MONY MONY",
   "short_name": "MONY MONY",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/logos/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logos/icon-512.png", "sizes": "512x512", "type": "image/png" }
   ],
   "theme_color": "#ce1317",
   "background_color": "#000000",
