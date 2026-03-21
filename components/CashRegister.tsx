@@ -59,9 +59,16 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
     { value: 0.02, label: '0,02 €',  type: 'moneda' },
     { value: 0.01, label: '0,01 €',  type: 'moneda' },
   ]
-  const [counts, setCounts] = useState<Record<string, string>>({})
+  const [counts, setCounts]       = useState<Record<string, string>>({})
+  const [countsAp, setCountsAp]   = useState<Record<string, string>>({})
+
   const totalContado = DENOMINATIONS.reduce((sum, d) => {
     const c = parseFloat(counts[String(d.value)] || '0') || 0
+    return sum + c * d.value
+  }, 0)
+
+  const totalApertura = DENOMINATIONS.reduce((sum, d) => {
+    const c = parseFloat(countsAp[String(d.value)] || '0') || 0
     return sum + c * d.value
   }, 0)
 
@@ -247,14 +254,55 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
 
         {/* APERTURA FORM */}
         {view === 'apertura' && (
-          <div style={{ maxWidth:480 }}>
+          <div style={{ maxWidth:520 }}>
             <div style={{ fontSize:15, fontWeight:700, marginBottom:16, color:'var(--green)' }}>🟢 Apertura de caja</div>
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               <div>
-                <label style={S.label}>Fondo inicial (€) — dinero en caja al abrir</label>
-                <input style={S.input} type="number" step="0.01" min="0"
-                  value={fondoInicial} onChange={e => setFondoInicial(e.target.value)}
-                  placeholder="Ej: 50.00" autoFocus />
+                <label style={S.label}>Conteo del fondo inicial — billetes y monedas</label>
+                <div style={{ fontSize:10, color:'var(--text2)', fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:6 }}>💵 Billetes</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+                  {DENOMINATIONS.filter(d => d.type === 'billete').map(d => (
+                    <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 6px', textAlign:'center' as const }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--amber)', marginBottom:4 }}>{d.label}</div>
+                      <input
+                        style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:5, padding:'5px 4px', color:'var(--text)', fontFamily:'monospace', fontSize:14, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                        type="number" min="0" step="1"
+                        value={countsAp[String(d.value)] || ''}
+                        onChange={e => setCountsAp(p => ({ ...p, [String(d.value)]: e.target.value }))}
+                        placeholder="0"
+                      />
+                      {(parseFloat(countsAp[String(d.value)] || '0') || 0) > 0 && (
+                        <div style={{ fontSize:10, color:'var(--green)', marginTop:3, fontFamily:'monospace' }}>
+                          = {((parseFloat(countsAp[String(d.value)] || '0') || 0) * d.value).toFixed(2).replace('.',',')} €
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize:10, color:'var(--text2)', fontWeight:700, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:6 }}>🪙 Monedas</div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+                  {DENOMINATIONS.filter(d => d.type === 'moneda').map(d => (
+                    <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 6px', textAlign:'center' as const }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--teal)', marginBottom:4 }}>{d.label}</div>
+                      <input
+                        style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:5, padding:'5px 4px', color:'var(--text)', fontFamily:'monospace', fontSize:14, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                        type="number" min="0" step="1"
+                        value={countsAp[String(d.value)] || ''}
+                        onChange={e => setCountsAp(p => ({ ...p, [String(d.value)]: e.target.value }))}
+                        placeholder="0"
+                      />
+                      {(parseFloat(countsAp[String(d.value)] || '0') || 0) > 0 && (
+                        <div style={{ fontSize:10, color:'var(--green)', marginTop:3, fontFamily:'monospace' }}>
+                          = {((parseFloat(countsAp[String(d.value)] || '0') || 0) * d.value).toFixed(2).replace('.',',')} €
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background:'var(--green-dim)', border:'1px solid rgba(62,207,142,.3)', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                  <span style={{ fontWeight:700, fontSize:14, color:'var(--green)' }}>💰 Fondo inicial</span>
+                  <span style={{ fontFamily:'monospace', fontWeight:800, fontSize:22, color:'var(--green)' }}>{totalApertura.toFixed(2).replace('.',',')} €</span>
+                </div>
               </div>
               <div>
                 <label style={S.label}>Observaciones (opcional)</label>
