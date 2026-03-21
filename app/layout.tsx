@@ -5,7 +5,8 @@ export const metadata: Metadata = {
   title: 'TPV MONY MONY',
   description: '',
   icons: {
-    icon: '/logos/ICONO_CORPORATIVO.svg',
+    icon: '/icon.svg',
+    apple: '/icon.svg',
   },
 }
 
