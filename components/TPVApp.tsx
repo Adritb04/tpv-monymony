@@ -136,6 +136,7 @@ export default function TPVApp() {
   const [notasCierre, setNotasCierre]   = useState('')
   const [cajaLoading, setCajaLoading]   = useState(false)
   const [payMethod, setPayMethod] = useState<'efectivo' | 'tarjeta'>('efectivo')
+  const [efectivoEntregado, setEfectivoEntregado] = useState('')
   const [activeCat, setActiveCat] = useState(0) // 0 = all
   const [search, setSearch]       = useState('')
   const [loading, setLoading]     = useState(false)
@@ -567,6 +568,7 @@ export default function TPVApp() {
       const res = await api.sales.create(token, { items, pay: payMethod })
       setCart([])
       setPayMethod('efectivo')
+      setEfectivoEntregado('')
       loadProducts() // refresh stock
       setTicketModal(res.data)
       // Imprimir automáticamente en impresora térmica
@@ -917,6 +919,44 @@ ${buildTicketHTML(s)}
                   </button>
                 ))}
               </div>
+              {/* Cambio efectivo */}
+              {payMethod === 'efectivo' && cart.length > 0 && (
+                <div style={{ marginBottom:8 }}>
+                  <div style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:4 }}>
+                    Efectivo entregado
+                  </div>
+                  <div style={{ display:'flex', gap:6, marginBottom:6, flexWrap:'wrap' as const }}>
+                    {[Math.ceil(total), Math.ceil(total/5)*5, Math.ceil(total/10)*10, Math.ceil(total/20)*20, Math.ceil(total/50)*50].filter((v,i,a)=>a.indexOf(v)===i&&v>=total).slice(0,4).map(v => (
+                      <button key={v} onClick={() => setEfectivoEntregado(String(v))} style={{
+                        padding:'4px 10px', borderRadius:6, border:`1px solid ${efectivoEntregado===String(v)?'var(--accent)':'var(--border)'}`,
+                        background: efectivoEntregado===String(v)?'var(--accent-dim)':'var(--s2)',
+                        color: efectivoEntregado===String(v)?'var(--accent)':'var(--text2)',
+                        cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit',
+                      }}>{v % 1 === 0 ? v : v.toFixed(2)} €</button>
+                    ))}
+                  </div>
+                  <input
+                    style={{ ...S.input, textAlign:'center' as const, fontSize:16, fontWeight:700, fontFamily:'monospace' }}
+                    type="number" step="0.01" min="0"
+                    value={efectivoEntregado}
+                    onChange={e => setEfectivoEntregado(e.target.value)}
+                    placeholder={`Mín. ${fmt(total)}`}
+                  />
+                  {efectivoEntregado && parseFloat(efectivoEntregado) >= total && (
+                    <div style={{ marginTop:6, padding:'8px 12px', borderRadius:8, background:'var(--green-dim)', border:'1px solid rgba(62,207,142,.3)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <span style={{ fontSize:12, color:'var(--text2)' }}>💰 Cambio</span>
+                      <span style={{ fontSize:20, fontWeight:700, color:'var(--green)', fontFamily:'monospace' }}>
+                        {fmt(Math.round((parseFloat(efectivoEntregado) - total) * 100) / 100)}
+                      </span>
+                    </div>
+                  )}
+                  {efectivoEntregado && parseFloat(efectivoEntregado) < total && (
+                    <div style={{ marginTop:6, padding:'6px 10px', borderRadius:6, background:'var(--red-dim)', fontSize:11, color:'var(--red)', fontWeight:600 }}>
+                      ⚠️ Faltan {fmt(Math.round((total - parseFloat(efectivoEntregado)) * 100) / 100)}
+                    </div>
+                  )}
+                </div>
+              )}
               <button onClick={checkout} disabled={!cart.length || loading || (cajaChecked && !openCaja)} style={{
                 width:'100%', padding:11, borderRadius:8, border:'none',
                 background: cart.length ? 'var(--green)' : 'var(--s3)',
