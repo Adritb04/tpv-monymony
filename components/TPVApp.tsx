@@ -153,6 +153,7 @@ export default function TPVApp() {
   const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'compras' | 'informes'>('products')
   const [adminUsers, setAdminUsers] = useState<any[]>([])
   const [opLog, setOpLog]         = useState<any[]>([])
+  const [logKey, setLogKey]         = useState(0)
   const [integrity, setIntegrity] = useState<any>(null)
 
   // Modals
@@ -395,6 +396,7 @@ export default function TPVApp() {
         })
         const j = await res.json()
         setOpLog(j.data || [])
+        setLogKey(k => k + 1)
       } else if (tab === 'integrity') {
         const res = await api.integrity(token)
         setIntegrity(res.data)
@@ -1204,10 +1206,11 @@ ${buildTicketHTML(s)}
                   <button onClick={async () => {
                     const res = await fetch('/api/log?limit=200&_t=' + Date.now(), { headers: { Authorization: `Bearer ${token!}` } })
                     const j = await res.json()
-                    setOpLog(j.data || [])
+                    setOpLog([])
+                    setTimeout(() => { setOpLog(j.data || []); setLogKey(k => k + 1) }, 50)
                   }} style={{ ...S.btn(), padding:'6px 11px', fontSize:11 }}>🔄</button>
                 </div>
-                <div style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
+                <div key={logKey} style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
                   {opLog.map(e => (
                     <div key={e.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid var(--border)', alignItems:'flex-start' }}>
                       <span style={{ fontSize:15, flexShrink:0 }}>{{ venta:'🟢', rect:'🔴', auth:'🔵', admin:'🟡', system:'⚪' }[e.type as string] || '⚪'}</span>
