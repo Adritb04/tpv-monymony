@@ -194,7 +194,12 @@ export default function TPVApp() {
     } catch (e: any) { showToast(e.message, 'err') }
   }, [token])
 
-  useEffect(() => { if (token) loadProducts() }, [token, loadProducts])
+  useEffect(() => {
+    if (!token) return
+    loadProducts()
+    const interval = setInterval(loadProducts, 60000) // sync stock every 60s
+    return () => clearInterval(interval)
+  }, [token, loadProducts])
 
   // ── Load caja status ──
   const loadCaja = useCallback(async () => {
@@ -366,7 +371,13 @@ export default function TPVApp() {
     } catch (e: any) { showToast(e.message, 'err') }
   }, [token, payFilter, typeFilter, histSearch])
 
-  useEffect(() => { if (view === 'history') loadSales() }, [view, loadSales])
+  useEffect(() => {
+    if (view === 'history') {
+      loadSales()
+      const interval = setInterval(loadSales, 30000) // auto-refresh every 30s
+      return () => clearInterval(interval)
+    }
+  }, [view, loadSales])
 
   // ── Load admin data ──
   const loadAdminTab = useCallback(async (tab: string) => {
@@ -726,7 +737,7 @@ ${buildTicketHTML(s)}
     <div style={S.app}>
       {/* TOPBAR */}
       <div style={S.topbar}>
-       <img src="/logos/LOGO_OFICIAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:28, width:'auto', objectFit:'contain' }} />
+        <img src="/logos/LOGO_OFICIAL_POSITIVO_CORPORATIVO.svg" alt="Logo" style={{ height:28, width:'auto', objectFit:'contain' }} />
         <div style={{ display:'flex', gap:2 }}>
           {(['tpv','history'] as const).map(v => (
             <button key={v} onClick={() => setView(v)} style={{
