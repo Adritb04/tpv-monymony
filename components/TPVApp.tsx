@@ -11,14 +11,15 @@ import ReportsModule from './ReportsModule'
 const fmt = (n: number) => (n || 0).toFixed(2).replace('.', ',') + ' €'
 const fmtN = (n: number) => (n || 0).toFixed(2).replace('.', ',')
 const NEGOCIO = {
-  nombre:    process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE    || 'MI TIENDA',
-  nif:       process.env.NEXT_PUBLIC_NEGOCIO_NIF       || 'B00000000',
-  direccion: process.env.NEXT_PUBLIC_NEGOCIO_DIRECCION || 'Calle Mayor, 1',
-  cp:        process.env.NEXT_PUBLIC_NEGOCIO_CP        || '28001',
-  localidad: process.env.NEXT_PUBLIC_NEGOCIO_LOCALIDAD || 'Madrid',
-  telefono:  process.env.NEXT_PUBLIC_NEGOCIO_TELEFONO  || '',
-  email:     process.env.NEXT_PUBLIC_NEGOCIO_EMAIL     || '',
-  serie:     process.env.NEXT_PUBLIC_NEGOCIO_SERIE     || 'A',
+  nombre:       process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE       || 'MI TIENDA',
+  razon_social: process.env.NEXT_PUBLIC_NEGOCIO_RAZON_SOCIAL || '',
+  nif:          process.env.NEXT_PUBLIC_NEGOCIO_NIF          || 'B00000000',
+  direccion:    process.env.NEXT_PUBLIC_NEGOCIO_DIRECCION    || 'Calle Mayor, 1',
+  cp:           process.env.NEXT_PUBLIC_NEGOCIO_CP           || '28001',
+  localidad:    process.env.NEXT_PUBLIC_NEGOCIO_LOCALIDAD    || 'Madrid',
+  telefono:     process.env.NEXT_PUBLIC_NEGOCIO_TELEFONO     || '',
+  email:        process.env.NEXT_PUBLIC_NEGOCIO_EMAIL        || '',
+  serie:        process.env.NEXT_PUBLIC_NEGOCIO_SERIE        || 'A',
 }
 
 // ── CSS-in-JS styles (inline for single-file component) ─────────
@@ -72,7 +73,8 @@ function buildTicketHTML(s: any): string {
   }).join('')
 
   return `
-<div class="center bold" style="font-size:17px">${s.razon_social || NEGOCIO.nombre}</div>
+<div class="center bold" style="font-size:17px">${NEGOCIO.nombre}</div>
+${NEGOCIO.razon_social ? `<div class="center small">${NEGOCIO.razon_social}</div>` : ""}
 <div class="center small">NIF: ${s.nif || NEGOCIO.nif}</div>
 <div class="center small">${NEGOCIO.direccion}</div>
 <div class="center small">${NEGOCIO.cp} ${NEGOCIO.localidad}</div>
@@ -101,6 +103,10 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 <div class="small">${s.sw_name || 'TPV-Legal-ES'} v${s.sw_version || '1.0.0'}</div>
 <div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>
 <div class="center" style="margin-top:4px;font-size:14px;font-weight:700">*** Gracias por su compra ***</div>
+<div class="divider"></div>
+<div class="small" style="margin-top:4px;line-height:1.5">Cambios y devoluciones presentando el ticket y maximo 15 dias.</div>
+<div class="small" style="margin-top:4px;line-height:1.5">E-Regimen especial bienes usados. Garantia segun condiciones generales. La Empresa garantiza que estos productos han sido probados en el momento de la venta y que funcionaban adecuadamente de conformidad a su descripcion, naturaleza y a su peculiar caracter de bien usado. La garantia cubre exclusivamente el funcionamiento del bien, excluyendose los defectos por instalacion, por trato inadecuado o uso impropio. El comprador, en el plazo de 1 ano, podra solicitar, cuando proceda, la reparacion del producto, la rebaja del precio o la resolucion del contrato conforme a lo establecido en la legislacion vigente. No podra exigirse al vendedor la sustitucion del bien, por ser producto de segunda mano, salvo que medie acuerdo entre ambas partes.</div>
+<div class="small" style="margin-top:4px;line-height:1.5">No se admiten devoluciones, si existieran se emite vale de tienda.</div>
 <div style="height:20mm"></div>`
 }
 
