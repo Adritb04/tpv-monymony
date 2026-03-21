@@ -401,16 +401,15 @@ export default function TPVApp() {
   }, [token, loadProducts])
 
   useEffect(() => {
-    if (view === 'admin') loadAdminTab(adminTab)
-  }, [view, adminTab, loadAdminTab])
-
-  // Auto-refresh log independently
-  useEffect(() => {
-    if (view === 'admin' && adminTab === 'log') {
-      const interval = setInterval(() => loadAdminTab('log'), 30000)
-      return () => clearInterval(interval)
+    if (view === 'admin') {
+      loadAdminTab(adminTab)
+      // Auto-refresh log and sales every 30s
+      if (adminTab === 'log') {
+        const interval = setInterval(() => loadAdminTab('log'), 30000)
+        return () => clearInterval(interval)
+      }
     }
-  }, [view, adminTab])
+  }, [view, adminTab, loadAdminTab])
 
   // ── LOGIN ──
   const doLogin = async (username: string, password: string) => {
