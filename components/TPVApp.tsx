@@ -139,6 +139,26 @@ export default function TPVApp() {
   const [cierreModal, setCierreModal]   = useState(false)
   const [fondoInicial, setFondoInicial] = useState('')
   const [notasApertura, setNotasApertura] = useState('')
+
+  const DENOM = [
+    { value: 500, label: '500 €', type: 'billete' },
+    { value: 200, label: '200 €', type: 'billete' },
+    { value: 100, label: '100 €', type: 'billete' },
+    { value: 50,  label: '50 €',  type: 'billete' },
+    { value: 20,  label: '20 €',  type: 'billete' },
+    { value: 10,  label: '10 €',  type: 'billete' },
+    { value: 5,   label: '5 €',   type: 'billete' },
+    { value: 2,   label: '2 €',   type: 'moneda' },
+    { value: 1,   label: '1 €',   type: 'moneda' },
+    { value: 0.50,label: '0,50 €',type: 'moneda' },
+    { value: 0.20,label: '0,20 €',type: 'moneda' },
+    { value: 0.10,label: '0,10 €',type: 'moneda' },
+    { value: 0.05,label: '0,05 €',type: 'moneda' },
+    { value: 0.02,label: '0,02 €',type: 'moneda' },
+    { value: 0.01,label: '0,01 €',type: 'moneda' },
+  ]
+  const [apCounts, setApCounts] = useState<Record<string, string>>({})
+  const totalAp = DENOM.reduce((s, d) => s + (parseFloat(apCounts[String(d.value)] || '0') || 0) * d.value, 0)
   const [realContado, setRealContado]   = useState('')
   const [notasCierre, setNotasCierre]   = useState('')
   const [cajaLoading, setCajaLoading]   = useState(false)
@@ -271,12 +291,12 @@ export default function TPVApp() {
       const res = await fetch('/api/cash-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'apertura', fondo_inicial: parseFloat(fondoInicial) || 0, notes: notasApertura }),
+        body: JSON.stringify({ action: 'apertura', fondo_inicial: totalAp, notes: notasApertura }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
       showToast('✓ Caja abierta')
-      setFondoInicial(''); setNotasApertura(''); setAperturaModal(false)
+      setApCounts({}); setNotasApertura(''); setAperturaModal(false)
       loadCaja()
     } catch (e: any) { showToast(e.message, 'err') }
     finally { setCajaLoading(false) }
@@ -1563,18 +1583,50 @@ ${buildTicketHTML(s)}
               {new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' })}
             </div>
             <div style={{ textAlign:'left', marginBottom:16 }}>
-              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
-                Fondo inicial (€) — Dinero en caja al abrir
-              </label>
-              <input
-                style={{ ...S.input, fontSize:28, fontWeight:700, textAlign:'center' as const, fontFamily:'monospace', padding:'14px' }}
-                type="number" step="0.01" min="0"
-                value={fondoInicial}
-                onChange={e => setFondoInicial(e.target.value)}
-                placeholder="0.00"
-                autoFocus
-                onKeyDown={e => e.key === 'Enter' && doApertura()}
-              />
+              <div style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:8 }}>💵 Billetes</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:5, marginBottom:10 }}>
+                {DENOM.filter(d => d.type === 'billete').map(d => (
+                  <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:7, padding:'6px 4px', textAlign:'center' as const }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'var(--amber)', marginBottom:3 }}>{d.label}</div>
+                    <input
+                      style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 2px', color:'var(--text)', fontFamily:'monospace', fontSize:13, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                      type="number" min="0" step="1"
+                      value={apCounts[String(d.value)] || ''}
+                      onChange={e => setApCounts(p => ({ ...p, [String(d.value)]: e.target.value }))}
+                      placeholder="0"
+                    />
+                    {(parseFloat(apCounts[String(d.value)] || '0') || 0) > 0 && (
+                      <div style={{ fontSize:9, color:'var(--green)', marginTop:2, fontFamily:'monospace' }}>
+                        {((parseFloat(apCounts[String(d.value)] || '0') || 0) * d.value).toFixed(2).replace('.',',')} €
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:8 }}>🪙 Monedas</div>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:5, marginBottom:12 }}>
+                {DENOM.filter(d => d.type === 'moneda').map(d => (
+                  <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:7, padding:'6px 4px', textAlign:'center' as const }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'var(--teal)', marginBottom:3 }}>{d.label}</div>
+                    <input
+                      style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 2px', color:'var(--text)', fontFamily:'monospace', fontSize:13, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                      type="number" min="0" step="1"
+                      value={apCounts[String(d.value)] || ''}
+                      onChange={e => setApCounts(p => ({ ...p, [String(d.value)]: e.target.value }))}
+                      placeholder="0"
+                    />
+                    {(parseFloat(apCounts[String(d.value)] || '0') || 0) > 0 && (
+                      <div style={{ fontSize:9, color:'var(--green)', marginTop:2, fontFamily:'monospace' }}>
+                        {((parseFloat(apCounts[String(d.value)] || '0') || 0) * d.value).toFixed(2).replace('.',',')} €
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{ background:'var(--green-dim)', border:'1px solid rgba(62,207,142,.3)', borderRadius:10, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ fontWeight:700, fontSize:13, color:'var(--green)' }}>💰 Fondo inicial</span>
+                <span style={{ fontFamily:'monospace', fontWeight:800, fontSize:20, color:'var(--green)' }}>{totalAp.toFixed(2).replace('.',',')} €</span>
+              </div>
             </div>
             <div style={{ textAlign:'left', marginBottom:24 }}>
               <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
