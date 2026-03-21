@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getAuthFromRequest } from '@/lib/auth'
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
   if (to)   query = query.lte('ts', to)
 
   // Cajero only sees their own sales
-  if (auth.role === 'cajero') query = query.eq('cashier_id', auth.userId)
+  // All roles see all sales — no cashier filter
 
   const { data, error, count } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
