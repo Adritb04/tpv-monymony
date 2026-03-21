@@ -94,18 +94,18 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
   useEffect(() => { load() }, [load])
 
   const doApertura = async () => {
-    if (!fondoInicial && fondoInicial !== '0') return showToast('Introduce el fondo inicial', false)
     setLoading(true)
     try {
+      const fondo = totalApertura
       const res = await fetch('/api/cash-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'apertura', fondo_inicial: parseFloat(fondoInicial) || 0, notes: notesAp }),
+        body: JSON.stringify({ action: 'apertura', fondo_inicial: fondo, notes: notesAp }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
       showToast('✓ Caja abierta')
-      setFondoInicial(''); setNotesAp(''); setView('main')
+      setCountsAp({}); setNotesAp(''); setView('main')
       load()
       onCajaChange?.()
     } catch (e: any) { showToast(e.message, false) }
@@ -113,14 +113,14 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
   }
 
   const doCierre = async () => {
-    if (!realContado) return showToast('Introduce el importe real contado', false)
+    if (totalContado <= 0) return showToast('Introduce el conteo de caja', false)
     if (!openCaja) return showToast('No hay caja abierta', false)
     setLoading(true)
     try {
       const res = await fetch('/api/cash-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'cierre', apertura_id: openCaja.id, real_contado: parseFloat(realContado), notes: notesCierre }),
+        body: JSON.stringify({ action: 'cierre', apertura_id: openCaja.id, real_contado: totalContado, notes: notesCierre }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
@@ -128,7 +128,7 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
       onCajaChange?.()
       // Print PDF
       printArqueoPDF(j.data)
-      setRealContado(''); setNotesCierre(''); setView('main')
+      setCounts({}); setNotesCierre(''); setView('main')
       load()
     } catch (e: any) { showToast(e.message, false) }
     finally { setLoading(false) }
