@@ -72,7 +72,7 @@ function buildTicketHTML(s: any): string {
   }).join('')
 
   return `
-<div class="center bold" style="font-size:15px">${s.razon_social || NEGOCIO.nombre}</div>
+<div class="center bold" style="font-size:17px">${s.razon_social || NEGOCIO.nombre}</div>
 <div class="center small">NIF: ${s.nif || NEGOCIO.nif}</div>
 <div class="center small">${NEGOCIO.direccion}</div>
 <div class="center small">${NEGOCIO.cp} ${NEGOCIO.localidad}</div>
@@ -100,7 +100,7 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 <div class="divider"></div>
 <div class="small">${s.sw_name || 'TPV-Legal-ES'} v${s.sw_version || '1.0.0'}</div>
 <div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>
-<div class="center" style="margin-top:4px;font-size:12px">*** Gracias por su compra ***</div>
+<div class="center" style="margin-top:4px;font-size:14px;font-weight:700">*** Gracias por su compra ***</div>
 <div style="height:20mm"></div>`
 }
 
@@ -685,21 +685,22 @@ export default function TPVApp() {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 13px;
+    font-size: 15px;
+    font-weight: 600;
     color: #000;
     background: #fff;
     width: 72mm;
     padding: 4mm 2mm;
   }
   .center { text-align: center; }
-  .bold { font-weight: bold; }
-  .big { font-size: 16px; font-weight: bold; }
-  .small { font-size: 11px; }
+  .bold { font-weight: 800; }
+  .big { font-size: 18px; font-weight: 800; }
+  .small { font-size: 13px; font-weight: 600; }
   .row { display: flex; justify-content: space-between; margin: 2px 0; }
   .divider { border-top: 1px dashed #000; margin: 4px 0; }
-  .divider-solid { border-top: 1px solid #000; margin: 4px 0; }
-  .total { font-size: 17px; font-weight: bold; }
-  .hash { font-size: 8px; color: #666; word-break: break-all; margin-top: 2px; }
+  .divider-solid { border-top: 2px solid #000; margin: 4px 0; }
+  .total { font-size: 19px; font-weight: 800; }
+  .hash { font-size: 9px; color: #444; word-break: break-all; margin-top: 2px; }
   .rect { color: #000; }
 </style>
 </head><body>

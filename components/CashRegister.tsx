@@ -112,13 +112,13 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
     w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Arqueo de Caja</title>
     <style>
       *{box-sizing:border-box;margin:0;padding:0}
-      body{font-family:Arial,sans-serif;font-size:14px;color:#000;padding:24px}
-      h1{font-size:20px;margin-bottom:2px}
-      h2{font-size:15px;margin:14px 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
+      body{font-family:Arial,sans-serif;font-size:16px;font-weight:600;color:#000;padding:24px}
+      h1{font-size:22px;font-weight:800;margin-bottom:2px}
+      h2{font-size:17px;font-weight:700;margin:14px 0 6px;border-bottom:1px solid #ccc;padding-bottom:3px}
       .header{display:flex;justify-content:space-between;border-bottom:2px solid #000;padding-bottom:12px;margin-bottom:16px}
-      .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:14px}
-      .row.total{font-weight:700;font-size:16px;border-top:2px solid #000;border-bottom:none;padding-top:6px;margin-top:2px}
-      .row.dif{font-weight:700;font-size:17px;color:${difColor}}
+      .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:16px;font-weight:600}
+      .row.total{font-weight:800;font-size:18px;border-top:2px solid #000;border-bottom:none;padding-top:6px;margin-top:2px}
+      .row.dif{font-weight:800;font-size:19px;color:${difColor}}
       .box{border:1px solid #ddd;border-radius:6px;padding:12px;margin-bottom:12px}
       .box.ok{background:#f0fff4;border-color:#8ce99a}
       .box.warn{background:#fff9db;border-color:#ffd43b}
@@ -126,7 +126,7 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
       .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
       .sign-box{border:1px solid #999;border-radius:4px;min-height:60px;padding:8px;margin-top:6px}
       .signs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
-      .footer{margin-top:20px;font-size:11px;color:#888;border-top:1px solid #ccc;padding-top:8px}
+      .footer{margin-top:20px;font-size:13px;font-weight:600;color:#666;border-top:1px solid #ccc;padding-top:8px}
       @media print{body{padding:12px}}
     </style></head><body>
     <div class="header">
