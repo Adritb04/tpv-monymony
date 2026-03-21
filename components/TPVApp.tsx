@@ -104,9 +104,9 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 <div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>
 <div class="center" style="margin-top:4px;font-size:14px;font-weight:700">*** Gracias por su compra ***</div>
 <div class="divider"></div>
-<div class="small" style="margin-top:4px;line-height:1.5">Cambios y devoluciones presentando el ticket y maximo 15 dias.</div>
-<div class="small" style="margin-top:4px;line-height:1.5">E-Regimen especial bienes usados. Garantia segun condiciones generales. La Empresa garantiza que estos productos han sido probados en el momento de la venta y que funcionaban adecuadamente de conformidad a su descripcion, naturaleza y a su peculiar caracter de bien usado. La garantia cubre exclusivamente el funcionamiento del bien, excluyendose los defectos por instalacion, por trato inadecuado o uso impropio. El comprador, en el plazo de 1 ano, podra solicitar, cuando proceda, la reparacion del producto, la rebaja del precio o la resolucion del contrato conforme a lo establecido en la legislacion vigente. No podra exigirse al vendedor la sustitucion del bien, por ser producto de segunda mano, salvo que medie acuerdo entre ambas partes.</div>
-<div class="small" style="margin-top:4px;line-height:1.5">No se admiten devoluciones, si existieran se emite vale de tienda.</div>
+<div style="font-size:10px;margin-top:4px;line-height:1.4">Cambios y devoluciones presentando el ticket y maximo 15 dias.</div>
+<div style="font-size:10px;margin-top:4px;line-height:1.4">E-Regimen especial bienes usados. Garantia segun condiciones generales. La Empresa garantiza que estos productos han sido probados en el momento de la venta y que funcionaban adecuadamente de conformidad a su descripcion, naturaleza y a su peculiar caracter de bien usado. La garantia cubre exclusivamente el funcionamiento del bien, excluyendose los defectos por instalacion, por trato inadecuado o uso impropio. El comprador, en el plazo de 1 ano, podra solicitar, cuando proceda, la reparacion del producto, la rebaja del precio o la resolucion del contrato conforme a lo establecido en la legislacion vigente. No podra exigirse al vendedor la sustitucion del bien, por ser producto de segunda mano, salvo que medie acuerdo entre ambas partes.</div>
+<div style="font-size:10px;margin-top:4px;line-height:1.4">No se admiten devoluciones, si existieran se emite vale de tienda.</div>
 <div style="height:20mm"></div>`
 }
 
