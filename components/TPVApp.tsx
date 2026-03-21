@@ -409,8 +409,7 @@ export default function TPVApp() {
       const res = await api.login(username, password)
       setToken(res.token)
       setUser(res.user)
-      localStorage.setItem('tpv_token', res.token)
-      localStorage.setItem('tpv_user', JSON.stringify(res.user))
+      // No localStorage persistence — session lives only in memory
     } catch (e: any) {
       showToast(e.message, 'err')
     } finally {
@@ -418,12 +417,11 @@ export default function TPVApp() {
     }
   }
 
-  // Restore session
+  // No auto-login — always require manual login on page load
   useEffect(() => {
-    const t = localStorage.getItem('tpv_token')
-    const u = localStorage.getItem('tpv_user')
-    if (t && u) { setToken(t); setUser(JSON.parse(u)) }
-    setSessionReady(true) // mark as ready whether or not session exists
+    localStorage.removeItem('tpv_token')
+    localStorage.removeItem('tpv_user')
+    setSessionReady(true)
   }, [])
 
   const doLogout = () => {
