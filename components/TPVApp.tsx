@@ -1200,32 +1200,11 @@ ${buildTicketHTML(s)}
 
             {/* Log tab */}
             {adminTab === 'log' && (
-              <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-                <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', flexShrink:0 }}>
-                  <span style={{ fontSize:16, fontWeight:700, marginRight:'auto' }}>📜 Log de Operaciones</span>
-                  <button onClick={async () => {
-                    const res = await fetch('/api/log?limit=200&_t=' + Date.now(), { headers: { Authorization: `Bearer ${token!}` } })
-                    const j = await res.json()
-                    setOpLog([])
-                    setTimeout(() => { setOpLog(j.data || []); setLogKey(k => k + 1) }, 50)
-                  }} style={{ ...S.btn(), padding:'6px 11px', fontSize:11 }}>🔄</button>
-                </div>
-                <div key={logKey} style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
-                  {opLog.map(e => (
-                    <div key={e.id} style={{ display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid var(--border)', alignItems:'flex-start' }}>
-                      <span style={{ fontSize:15, flexShrink:0 }}>{{ venta:'🟢', rect:'🔴', auth:'🔵', admin:'🟡', system:'⚪' }[e.type as string] || '⚪'}</span>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontSize:12, fontWeight:600 }}>{e.action}</div>
-                        <div style={{ fontSize:11, color:'var(--text2)' }}>{e.detail} <span style={{ color:'var(--text3)' }}>· {e.username}</span></div>
-                      </div>
-                      <span style={{ ...S.badge(
-                        e.type==='venta'?'var(--green)':e.type==='rect'?'var(--red)':e.type==='auth'?'var(--accent)':e.type==='admin'?'var(--amber)':'var(--text2)',
-                        e.type==='venta'?'var(--green-dim)':e.type==='rect'?'var(--red-dim)':e.type==='auth'?'var(--accent-dim)':e.type==='admin'?'var(--amber-dim)':'var(--s3)'
-                      ), fontSize:9, flexShrink:0 }}>{e.type}</span>
-                      <span style={{ fontSize:10, color:'var(--text3)', fontFamily:'monospace', whiteSpace:'nowrap', flexShrink:0 }}>{e.dt}</span>
-                    </div>
-                  ))}
-                  {!opLog.length && <div style={{ textAlign:'center', color:'var(--text3)', padding:40 }}>Sin operaciones</div>}
+              <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
+                <div style={{ fontSize:48 }}>🔧</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'var(--text)' }}>Próximamente</div>
+                <div style={{ fontSize:13, color:'var(--text2)', textAlign:'center' as const, maxWidth:340, lineHeight:1.6 }}>
+                  El log de operaciones está en mantenimiento.<br/>Estará disponible en la próxima actualización.
                 </div>
               </div>
             )}
