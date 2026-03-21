@@ -109,6 +109,7 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 // ═══════════════════════════════════════════════════════════════
 export default function TPVApp() {
   const [token, setToken] = useState<string | null>(null)
+  const [sessionReady, setSessionReady] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function TPVApp() {
 
   // ── Load caja status ──
   const loadCaja = useCallback(async () => {
-    if (!token) return
+    if (!token || !user) return
     try {
       const res = await fetch('/api/cash-register?status=abierto&limit=1', {
         headers: { Authorization: `Bearer ${token}` }
@@ -214,9 +215,9 @@ export default function TPVApp() {
       setOpenCaja(open)
       setCajaChecked(true)
     } catch { setCajaChecked(true) }
-  }, [token])
+  }, [token, user])
 
-  useEffect(() => { if (token) loadCaja() }, [token, loadCaja])
+  useEffect(() => { if (token && user && sessionReady) loadCaja() }, [token, user, sessionReady, loadCaja])
 
   // ── Barcode scanner listener ──
   // Scanners type very fast + Enter. We capture that globally.
@@ -422,6 +423,7 @@ export default function TPVApp() {
     const t = localStorage.getItem('tpv_token')
     const u = localStorage.getItem('tpv_user')
     if (t && u) { setToken(t); setUser(JSON.parse(u)) }
+    setSessionReady(true) // mark as ready whether or not session exists
   }, [])
 
   const doLogout = () => {
@@ -1561,7 +1563,7 @@ ${buildTicketHTML(s)}
       )}
 
       {/* ── APERTURA CAJA — FULLSCREEN MODAL ── */}
-      {token && user && cajaChecked && !openCaja && (
+      {token && user && sessionReady && cajaChecked && !openCaja && !isMobile && (
         <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(245,247,251,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
           <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 8px 48px rgba(89,122,166,.2)', textAlign:'center' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🏪</div>
