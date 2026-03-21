@@ -62,7 +62,7 @@ function buildTicketHTML(s: any): string {
   const rebuNote = rebu?.total > 0 ? `
     <div class="divider"></div>
     <div class="row small"><span>Arts. REBU</span><span>${fmtN(rebu.total)} EUR</span></div>
-    <div class="small" style="font-size:8px">IVA incluido no deducible<br>Art. 135-139 LIVA</div>` : ''
+    <div class="small" style="font-size:10px">IVA incluido no deducible<br>Art. 135-139 LIVA</div>` : ''
 
   // Items
   const items = (s.items || []).map((i: any) => {
@@ -72,7 +72,7 @@ function buildTicketHTML(s: any): string {
   }).join('')
 
   return `
-<div class="center bold" style="font-size:13px">${s.razon_social || NEGOCIO.nombre}</div>
+<div class="center bold" style="font-size:15px">${s.razon_social || NEGOCIO.nombre}</div>
 <div class="center small">NIF: ${s.nif || NEGOCIO.nif}</div>
 <div class="center small">${NEGOCIO.direccion}</div>
 <div class="center small">${NEGOCIO.cp} ${NEGOCIO.localidad}</div>
@@ -100,7 +100,7 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 <div class="divider"></div>
 <div class="small">${s.sw_name || 'TPV-Legal-ES'} v${s.sw_version || '1.0.0'}</div>
 <div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>
-<div class="center" style="margin-top:4px;font-size:10px">*** Gracias por su compra ***</div>
+<div class="center" style="margin-top:4px;font-size:12px">*** Gracias por su compra ***</div>
 <div style="height:20mm"></div>`
 }
 
@@ -685,7 +685,7 @@ export default function TPVApp() {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: 'Courier New', Courier, monospace;
-    font-size: 11px;
+    font-size: 13px;
     color: #000;
     background: #fff;
     width: 72mm;
@@ -693,13 +693,13 @@ export default function TPVApp() {
   }
   .center { text-align: center; }
   .bold { font-weight: bold; }
-  .big { font-size: 14px; font-weight: bold; }
-  .small { font-size: 9px; }
-  .row { display: flex; justify-content: space-between; margin: 1px 0; }
-  .divider { border-top: 1px dashed #000; margin: 3px 0; }
-  .divider-solid { border-top: 1px solid #000; margin: 3px 0; }
-  .total { font-size: 15px; font-weight: bold; }
-  .hash { font-size: 7px; color: #666; word-break: break-all; margin-top: 2px; }
+  .big { font-size: 16px; font-weight: bold; }
+  .small { font-size: 11px; }
+  .row { display: flex; justify-content: space-between; margin: 2px 0; }
+  .divider { border-top: 1px dashed #000; margin: 4px 0; }
+  .divider-solid { border-top: 1px solid #000; margin: 4px 0; }
+  .total { font-size: 17px; font-weight: bold; }
+  .hash { font-size: 8px; color: #666; word-break: break-all; margin-top: 2px; }
   .rect { color: #000; }
 </style>
 </head><body>
