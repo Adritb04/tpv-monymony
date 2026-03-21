@@ -389,8 +389,11 @@ export default function TPVApp() {
         const res = await api.users.list(token)
         setAdminUsers(res.data)
       } else if (tab === 'log') {
-        const res = await api.log(token)
-        setOpLog(res.data)
+        const res = await fetch('/api/log?limit=200&_t=' + Date.now(), {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        const j = await res.json()
+        setOpLog(j.data || [])
       } else if (tab === 'integrity') {
         const res = await api.integrity(token)
         setIntegrity(res.data)
@@ -1197,7 +1200,11 @@ ${buildTicketHTML(s)}
               <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
                 <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', flexShrink:0 }}>
                   <span style={{ fontSize:16, fontWeight:700, marginRight:'auto' }}>📜 Log de Operaciones</span>
-                  <button onClick={() => loadAdminTab('log')} style={{ ...S.btn(), padding:'6px 11px', fontSize:11 }}>🔄</button>
+                  <button onClick={async () => {
+                    const res = await fetch('/api/log?limit=200&_t=' + Date.now(), { headers: { Authorization: `Bearer ${token!}` } })
+                    const j = await res.json()
+                    setOpLog(j.data || [])
+                  }} style={{ ...S.btn(), padding:'6px 11px', fontSize:11 }}>🔄</button>
                 </div>
                 <div style={{ flex:1, overflowY:'auto', padding:'12px 20px' }}>
                   {opLog.map(e => (
