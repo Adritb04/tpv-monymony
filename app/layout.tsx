@@ -5,8 +5,10 @@ export const metadata: Metadata = {
   title: 'TPV MONY MONY',
   description: '',
   icons: {
-    icon: '/logos/ICONO_CORPORATIVO.svg',
+    icon: '/logos/ICONO_CORPORATIVO.png',
+    apple: '/logos/ICONO_CORPORATIVO.png',
   },
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
