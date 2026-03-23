@@ -20,7 +20,7 @@ type NuevoSub = 'menu' | 'producto' | 'factura' | 'rebu' | 'deposito'
 interface MobileTPVProps { token: string; user: any; onLogout: () => void }
 
 export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
-  const [tab, setTab]               = useState<MobileTab>(user.role === 'cajero' ? 'tpv' : 'historial')
+  const [tab, setTab]               = useState<MobileTab>(() => user.role === 'cajero' ? 'tpv' : 'historial')
   const [nuevoSub, setNuevoSub]     = useState<NuevoSub>('menu')
   const [products, setProducts]     = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
