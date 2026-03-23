@@ -1062,7 +1062,8 @@ ${buildTicketHTML(s)}
                   const isRect = s.type === 'rectificativo'
                   const canRect = (user.role === 'encargado' || user.role === 'admin') && !isRect && !s.rectified
                   return (
-                    <tr key={s.id} style={{ opacity: isRect ? .7 : 1 }}
+                    <tr key={s.id} style={{ opacity: isRect ? .7 : 1, cursor:'pointer' }}
+                      onClick={() => setTicketModal(s)}
                       onMouseEnter={e => (e.currentTarget.style.background='var(--s2)')}
                       onMouseLeave={e => (e.currentTarget.style.background='transparent')}>
                       <td style={S.td}><span style={{ ...S.badge('var(--text2)','var(--s3)'), fontFamily:'monospace' }}>{s.ticket_id}</span></td>

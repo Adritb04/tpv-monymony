@@ -19,6 +19,57 @@ type NuevoSub = 'menu' | 'producto' | 'factura' | 'rebu' | 'deposito'
 
 interface MobileTPVProps { token: string; user: any; onLogout: () => void }
 
+function buildTicketHTML(s: any): string {
+  const isRect = s.type === 'rectificativo'
+  const bd = s.iva_breakdown || {}
+  const fmtN2 = (n: number) => (n || 0).toFixed(2).replace('.', ',')
+  let ivaLines = ''
+  ;[4, 10, 21].forEach(r => {
+    const g = bd[String(r)]
+    if (g?.base > 0) ivaLines +=
+      `<div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>Base IVA ${r}%</span><span>${fmtN2(g.base)} €</span></div>` +
+      `<div style="display:flex;justify-content:space-between;font-size:11px;color:#555"><span>Cuota IVA ${r}%</span><span>${fmtN2(g.iva)} €</span></div>`
+  })
+  const rebu = bd.rebu
+  const rebuNote = rebu?.total > 0 ? `<div style="font-size:10px;color:#999">REBU — IVA s/margen incl.</div>` : ''
+  const items = (s.items || []).map((i: any) =>
+    `<div style="display:flex;justify-content:space-between;font-size:12px"><span>${i.emoji||''} ${i.name} x${i.qty}</span><span>${fmtN2(i.line_total || i.price * i.qty)} €</span></div>` +
+    `<div style="font-size:10px;color:#999;padding-left:6px">${i.regime==='rebu'?'REBU':'IVA '+i.iva_rate+'%'}</div>`
+  ).join('')
+  return `<div style="font-family:'Courier New',monospace;font-size:12px;color:#000;max-width:320px;margin:0 auto">
+  <div style="text-align:center;font-weight:700;font-size:14px">${s.razon_social||''}</div>
+  <div style="text-align:center;font-size:11px">NIF: ${s.nif||''}</div>
+  <div style="border-top:1px dashed #999;margin:5px 0"></div>
+  ${isRect?`<div style="text-align:center;color:red;font-weight:700">⚠️ FACTURA RECTIFICATIVA</div><div style="border-top:1px dashed #999;margin:5px 0"></div>`:''}
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>Ticket</span><span>${s.ticket_id}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>Fecha</span><span>${s.date} ${s.time}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>Cajero</span><span>${s.cashier_name}</span></div>
+  <div style="border-top:1px dashed #999;margin:5px 0"></div>
+  ${items}
+  <div style="border-top:1px dashed #999;margin:5px 0"></div>
+  ${ivaLines}${rebuNote}
+  ${ivaLines||rebuNote?'<div style="border-top:1px dashed #999;margin:5px 0"></div>':''}
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>Base imponible</span><span>${fmtN2(Math.abs(s.base))} €</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>IVA total</span><span>${fmtN2(Math.abs(s.iva_total))} €</span></div>
+  <div style="border-top:2px solid #000;margin:5px 0"></div>
+  <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:${isRect?'red':'#000'}">
+    <span>TOTAL${isRect?' RECTIFICADO':''}</span><span>${isRect?'−':''}${fmtN2(Math.abs(s.total))} €</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:11px"><span>Pago</span><span>${s.pay==='efectivo'?'Efectivo':'Tarjeta'}</span></div>
+  <div style="text-align:center;margin-top:6px;font-size:11px">*** Gracias por su compra ***</div>
+  <div style="height:10mm"></div>
+</div>`
+}
+
+function printMobileTicket(s: any) {
+  const w = window.open('', '_blank', 'width=400,height=700')!
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Ticket ${s.ticket_id}</title>
+  <style>body{margin:10px;background:#fff}@page{size:80mm auto;margin:0}@media print{body{margin:0}}</style></head>
+  <body>${buildTicketHTML(s)}</body></html>`)
+  w.document.close()
+  setTimeout(() => { w.print(); w.close() }, 400)
+}
+
 export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
   const [tab, setTab]               = useState<MobileTab>(() => user.role === 'cajero' ? 'tpv' : 'historial')
   const [nuevoSub, setNuevoSub]     = useState<NuevoSub>('menu')
@@ -214,7 +265,8 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
           </div>
           <div style={{display:'flex',flexDirection:'column' as const,gap:8}}>
             {sales.map(s=>(
-              <div key={s.id} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'11px 13px'}}>
+              <div key={s.id} onClick={()=>setTicketModal(s)}
+                style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'11px 13px',cursor:'pointer'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
                   <span style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:s.type==='rectificativo'?C.red:C.accent}}>{s.ticket_id}</span>
                   <span style={{fontSize:14,fontWeight:700,color:s.type==='rectificativo'?C.red:C.green,fontFamily:'monospace'}}>{s.type==='rectificativo'?'−':''}{fmtN(Math.abs(parseFloat(s.total)))} €</span>
@@ -223,6 +275,7 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
                   <span>{s.date} {s.time}</span>
                   <span>{s.pay==='efectivo'?'💵':'💳'} {s.cashier_name}</span>
                 </div>
+                <div style={{fontSize:10,color:C.text3,marginTop:4,textAlign:'right' as const}}>👁 Ver ticket</div>
               </div>
             ))}
             {!sales.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:30}}>Sin ventas</div>}
@@ -528,25 +581,22 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
       {/* TICKET MODAL */}
       {ticketModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.9)',zIndex:300,display:'flex',flexDirection:'column' as const,justifyContent:'flex-end'}}>
-          <div style={{background:C.s1,borderRadius:'16px 16px 0 0',padding:'20px 16px',maxHeight:'85vh',overflowY:'auto' as const}}>
-            <div style={{textAlign:'center' as const,marginBottom:14}}>
-              <div style={{fontSize:36,marginBottom:6}}>✅</div>
-              <div style={{fontSize:16,fontWeight:700}}>¡Venta completada!</div>
-              <div style={{fontSize:12,color:C.text2}}>{ticketModal.ticket_id} · {ticketModal.date} {ticketModal.time}</div>
-            </div>
-            <div style={{background:C.s2,borderRadius:10,padding:14,marginBottom:14,fontSize:12,fontFamily:'monospace'}}>
-              <div style={{textAlign:'center' as const,fontWeight:700,marginBottom:6}}>{ticketModal.razon_social}</div>
-              {(ticketModal.items||[]).map((i:any,idx:number)=>(
-                <div key={idx} style={{display:'flex',justifyContent:'space-between',color:C.text2,marginBottom:2}}>
-                  <span>{i.emoji} {i.name} x{i.qty}</span><span>{fmtN(i.line_total)} €</span>
-                </div>
-              ))}
-              <div style={{borderTop:`1px dashed ${C.border}`,marginTop:8,paddingTop:8,display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:14,color:C.green}}>
-                <span>TOTAL</span><span>{fmtN(Math.abs(parseFloat(ticketModal.total)))} €</span>
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.9)',zIndex:300,display:'flex',flexDirection:'column' as const,justifyContent:'flex-end'}}
+          onClick={e=>{if(e.target===e.currentTarget)setTicketModal(null)}}>
+          <div style={{background:C.s1,borderRadius:'16px 16px 0 0',padding:'20px 16px',maxHeight:'90vh',overflowY:'auto' as const}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:700}}>{ticketModal.type==='rectificativo'?'↩️ Rectificativo':'✅ Ticket'}</div>
+                <div style={{fontSize:12,color:C.text2}}>{ticketModal.ticket_id} · {ticketModal.date} {ticketModal.time}</div>
               </div>
+              <button onClick={()=>setTicketModal(null)} style={{background:'none',border:'none',color:C.text2,fontSize:22,cursor:'pointer'}}>✕</button>
             </div>
-            <button onClick={()=>setTicketModal(null)} style={btn()}>Cerrar</button>
+            <div style={{background:'#fff',border:`1px solid ${C.border}`,borderRadius:10,padding:14,marginBottom:14}}
+              dangerouslySetInnerHTML={{__html: buildTicketHTML(ticketModal)}} />
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setTicketModal(null)} style={{...btn(),flex:1,background:C.s3,color:C.text}}>Cerrar</button>
+              <button onClick={()=>printMobileTicket(ticketModal)} style={{...btn(),flex:1}}>🖨️ Imprimir</button>
+            </div>
           </div>
         </div>
       )}
