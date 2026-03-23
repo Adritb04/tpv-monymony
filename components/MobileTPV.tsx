@@ -20,7 +20,7 @@ type NuevoSub = 'menu' | 'producto' | 'factura' | 'rebu' | 'deposito'
 interface MobileTPVProps { token: string; user: any; onLogout: () => void }
 
 export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
-  const [tab, setTab]               = useState<MobileTab>('tpv')
+  const [tab, setTab]               = useState<MobileTab>(() => user.role === 'cajero' ? 'tpv' : 'historial')
   const [nuevoSub, setNuevoSub]     = useState<NuevoSub>('menu')
   const [products, setProducts]     = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -159,7 +159,7 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
   const lbl = {fontSize:10,color:C.text2,fontWeight:600,textTransform:'uppercase' as const,display:'block',marginBottom:4}
 
   return (
-    <div style={{background:C.bg,minHeight:'100vh',color:C.text,fontFamily:"'DM Sans',system-ui,sans-serif",paddingBottom:70}}>
+    <div style={{background:C.bg,minHeight:'100vh',height:'100vh',overflowY:'auto',color:C.text,fontFamily:"'DM Sans',system-ui,sans-serif",paddingBottom:70}}>
 
       {/* TOP BAR */}
       <div style={{position:'sticky',top:0,zIndex:50,background:C.s1,borderBottom:`1px solid ${C.border}`,padding:'10px 14px',display:'flex',alignItems:'center',gap:8}}>
@@ -480,7 +480,9 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
       {/* BOTTOM TAB BAR */}
       <div style={{position:'fixed',bottom:0,left:0,right:0,height:60,background:C.s1,borderTop:`1px solid ${C.border}`,display:'flex',alignItems:'center',zIndex:100}}>
-        {([['tpv','🧾','Venta'],['historial','📋','Historial'],['stock','📦','Stock'],['nuevo','➕','Nuevo']] as [MobileTab,string,string][]).map(([t,icon,label])=>(
+        {([['tpv','🧾','Venta'],['historial','📋','Historial'],['stock','📦','Stock'],['nuevo','➕','Nuevo']] as [MobileTab,string,string][])
+          .filter(([t]) => t !== 'tpv' || user.role === 'cajero')
+          .map(([t,icon,label])=>(
           <button key={t} onClick={()=>{setTab(t);if(t==='nuevo')setNuevoSub('menu')}} style={{flex:1,height:'100%',border:'none',background:'none',cursor:'pointer',display:'flex',flexDirection:'column' as const,alignItems:'center',justifyContent:'center',gap:3,color:tab===t?C.accent:C.text3,fontFamily:'inherit'}}>
             <span style={{fontSize:20}}>{icon}</span>
             <span style={{fontSize:9,fontWeight:tab===t?700:400}}>{label}</span>
