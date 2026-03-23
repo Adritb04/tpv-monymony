@@ -582,7 +582,7 @@ export default function TPVApp() {
   // ── CHECKOUT ──
   const checkout = async () => {
     if (!cart.length || !token) return
-    if (cajaChecked && !openCaja) {
+    if (user.role === 'cajero' && cajaChecked && !openCaja) {
       showToast('⚠️ Debes abrir la caja antes de vender', 'err')
       setView('caja')
       return
@@ -986,14 +986,14 @@ ${buildTicketHTML(s)}
                   )}
                 </div>
               )}
-              <button onClick={checkout} disabled={!cart.length || loading || (cajaChecked && !openCaja)} style={{
+              <button onClick={checkout} disabled={!cart.length || loading || (user.role === 'cajero' && cajaChecked && !openCaja)} style={{
                 width:'100%', padding:11, borderRadius:8, border:'none',
                 background: cart.length ? 'var(--green)' : 'var(--s3)',
                 color: cart.length ? '#fff' : 'var(--text3)',
                 cursor: cart.length ? 'pointer' : 'not-allowed',
                 fontSize:14, fontWeight:700, fontFamily:'inherit',
               }}>
-                {loading ? '...' : (cajaChecked && !openCaja) ? '🔴 Abre la caja primero' : cart.length ? `Cobrar ${fmt(total)}` : 'Cobrar'}
+                {loading ? '...' : (user.role === 'cajero' && cajaChecked && !openCaja) ? '🔴 Abre la caja primero' : cart.length ? `Cobrar ${fmt(total)}` : 'Cobrar'}
               </button>
               {cart.length > 0 && (
                 <button onClick={() => setCart([])} style={{ ...S.btnOutline, width:'100%', marginTop:5, fontSize:11 }}>Vaciar carrito</button>
@@ -1574,7 +1574,7 @@ ${buildTicketHTML(s)}
       )}
 
       {/* ── APERTURA CAJA — FULLSCREEN MODAL ── */}
-      {token && user && sessionReady && cajaChecked && !openCaja && !isMobile && (
+      {token && user && sessionReady && cajaChecked && !openCaja && !isMobile && user.role === 'cajero' && (
         <div style={{ position:'fixed', inset:0, zIndex:800, background:'rgba(245,247,251,.97)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }}>
           <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:20, padding:40, width:440, boxShadow:'0 8px 48px rgba(89,122,166,.2)', textAlign:'center' }}>
             <div style={{ fontSize:48, marginBottom:12 }}>🏪</div>
