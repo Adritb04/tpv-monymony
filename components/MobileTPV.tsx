@@ -210,7 +210,8 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
   const lbl = {fontSize:10,color:C.text2,fontWeight:600,textTransform:'uppercase' as const,display:'block',marginBottom:4}
 
   return (
-    <div style={{background:C.bg,minHeight:'100vh',height:'100vh',overflowY:'auto',color:C.text,fontFamily:"'DM Sans',system-ui,sans-serif",paddingBottom:70}}>
+    <div style={{background:C.bg,height:'100vh',display:'flex',flexDirection:'column' as const,color:C.text,fontFamily:"'DM Sans',system-ui,sans-serif"}}>
+    <div style={{flex:1,overflowY:'auto',paddingBottom:80}}>
 
       {/* TOP BAR */}
       <div style={{position:'sticky',top:0,zIndex:50,background:C.s1,borderBottom:`1px solid ${C.border}`,padding:'10px 14px',display:'flex',alignItems:'center',gap:8}}>
@@ -530,6 +531,8 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
         </div>
       )}
+
+      </div>{/* end scroll container */}
 
       {/* BOTTOM TAB BAR */}
       <div style={{position:'fixed',bottom:0,left:0,right:0,height:60,background:C.s1,borderTop:`1px solid ${C.border}`,display:'flex',alignItems:'center',zIndex:100}}>
