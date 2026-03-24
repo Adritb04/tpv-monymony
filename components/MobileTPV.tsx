@@ -215,7 +215,7 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
       {/* TOP BAR */}
       <div style={{position:'sticky',top:0,zIndex:50,background:C.s1,borderBottom:`1px solid ${C.border}`,padding:'10px 14px',display:'flex',alignItems:'center',gap:8}}>
-        <span style={{fontWeight:700,fontSize:15,color:C.accent}}>🏪 TPV</span>
+        <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="TPV" style={{height:28,width:'auto',objectFit:'contain'}} />
         <span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'rgba(62,207,142,.12)',color:C.green,fontWeight:600}}>✓ Legal</span>
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:11,color:C.text2}}>{user.name}</span>
