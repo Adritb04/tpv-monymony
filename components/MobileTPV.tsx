@@ -85,6 +85,11 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
   const [ticketModal, setTicketModal] = useState<any>(null)
   const [cartOpen, setCartOpen]     = useState(false)
   const [stockSearch, setStockSearch] = useState('')
+  const [histTab, setHistTab]       = useState<'ventas'|'caja'|'compras'|'reservas'>('ventas')
+  const [cajaList, setCajaList]     = useState<any[]>([])
+  const [comprasList, setComprasList] = useState<any[]>([])
+  const [rebuList, setRebuList]     = useState<any[]>([])
+  const [reservasList, setReservasList] = useState<any[]>([])
 
   // Forms
   const [prdForm, setPrdForm]       = useState<any>({ emoji:'📦', regime:'iva', iva_rate:21, stock:1, price:0, cost_price:0 })
@@ -107,8 +112,30 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
     catch(e:any) { showToast(e.message,false) }
   }, [token])
 
+  const loadHistTab = useCallback(async (ht: string) => {
+    try {
+      if (ht === 'ventas') { const r = await api.sales.list(token,{limit:'50'}); setSales(r.data||[]) }
+      if (ht === 'caja') {
+        const r = await fetch('/api/cash-register?limit=20', { headers:{ Authorization:`Bearer ${token}` } })
+        const j = await r.json(); setCajaList(j.data||[])
+      }
+      if (ht === 'compras') {
+        const [r1, r2] = await Promise.all([
+          fetch('/api/purchases?limit=30', { headers:{ Authorization:`Bearer ${token}` } }),
+          fetch('/api/rebu-purchases?limit=30', { headers:{ Authorization:`Bearer ${token}` } }),
+        ])
+        const j1 = await r1.json(); const j2 = await r2.json()
+        setComprasList(j1.data||[]); setRebuList(j2.data||[])
+      }
+      if (ht === 'reservas') {
+        const r = await fetch('/api/reservations?status=activa', { headers:{ Authorization:`Bearer ${token}` } })
+        const j = await r.json(); setReservasList(j.data||[])
+      }
+    } catch(e:any) { showToast(e.message,false) }
+  }, [token])
+
   useEffect(()=>{ loadData() },[loadData])
-  useEffect(()=>{ if(tab==='historial') loadSales() },[tab,loadSales])
+  useEffect(()=>{ if(tab==='historial') loadHistTab(histTab) },[tab,histTab,loadHistTab])
 
   // ── Cart ──
   const addToCart = (p:any) => {
@@ -215,7 +242,7 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
       {/* TOP BAR */}
       <div style={{position:'sticky',top:0,zIndex:50,background:C.s1,borderBottom:`1px solid ${C.border}`,padding:'10px 14px',display:'flex',alignItems:'center',gap:8}}>
-        <img src="/logos/LOGO_HORIZONTAL_POSITIVO_CORPORATIVO.svg" alt="TPV" style={{height:28,width:'auto',objectFit:'contain'}} />
+        <span style={{fontWeight:700,fontSize:15,color:C.accent}}>🏪 TPV</span>
         <span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'rgba(62,207,142,.12)',color:C.green,fontWeight:600}}>✓ Legal</span>
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:11,color:C.text2}}>{user.name}</span>
@@ -255,31 +282,290 @@ export default function MobileTPV({ token, user, onLogout }: MobileTPVProps) {
 
       {/* HISTORIAL TAB */}
       {tab==='historial'&&(
-        <div style={{padding:'10px 12px'}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
-            {([['Ventas',sales.filter(s=>s.type!=='rectificativo').length,C.accent],['Facturado',fmt(sales.filter(s=>s.type!=='rectificativo').reduce((a,b)=>a+parseFloat(b.total),0)),C.green]] as [string,any,string][]).map(([label,val,color])=>(
-              <div key={label} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 12px'}}>
-                <div style={{fontSize:10,color:C.text2,marginBottom:3}}>{label}</div>
-                <div style={{fontSize:16,fontWeight:700,color,fontFamily:'monospace'}}>{val}</div>
-              </div>
+        <div>
+          {/* Sub-tabs */}
+          <div style={{display:'flex',overflowX:'auto',borderBottom:`1px solid ${C.border}`,flexShrink:0}}>
+            {([['ventas','🧾','Ventas'],['caja','💰','Caja'],['compras','📦','Compras'],['reservas','📋','Reservas']] as [typeof histTab,string,string][]).map(([ht,icon,label])=>(
+              <button key={ht} onClick={()=>setHistTab(ht)} style={{
+                flex:1,padding:'10px 4px',border:'none',borderBottom:`2px solid ${histTab===ht?C.accent:'transparent'}`,
+                background:'none',color:histTab===ht?C.accent:C.text2,cursor:'pointer',fontSize:11,fontWeight:histTab===ht?700:400,fontFamily:'inherit',whiteSpace:'nowrap' as const
+              }}>{icon} {label}</button>
             ))}
           </div>
-          <div style={{display:'flex',flexDirection:'column' as const,gap:8}}>
-            {sales.map(s=>(
-              <div key={s.id} onClick={()=>setTicketModal(s)}
-                style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'11px 13px',cursor:'pointer'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
-                  <span style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:s.type==='rectificativo'?C.red:C.accent}}>{s.ticket_id}</span>
-                  <span style={{fontSize:14,fontWeight:700,color:s.type==='rectificativo'?C.red:C.green,fontFamily:'monospace'}}>{s.type==='rectificativo'?'−':''}{fmtN(Math.abs(parseFloat(s.total)))} €</span>
+
+          <div style={{padding:'10px 12px'}}>
+
+            {/* ── VENTAS ── */}
+            {histTab==='ventas'&&(()=>{
+              const ventas = sales.filter(s=>s.type!=='rectificativo')
+              const rects  = sales.filter(s=>s.type==='rectificativo')
+              const totalEfectivo = ventas.filter(s=>s.pay==='efectivo').reduce((a,b)=>a+parseFloat(b.total),0)
+              const totalTarjeta  = ventas.filter(s=>s.pay==='tarjeta').reduce((a,b)=>a+parseFloat(b.total),0)
+              const totalV = totalEfectivo + totalTarjeta
+              const r1 = totalV>0?totalEfectivo/totalV:0
+              const cx=60, cy=60, radius=50
+              const arc = (pct: number) => {
+                if(pct>=1) return `M ${cx} ${cy-radius} A ${radius} ${radius} 0 1 1 ${cx-0.01} ${cy-radius} Z`
+                const a = pct*2*Math.PI - Math.PI/2
+                return `M ${cx} ${cy-radius} A ${radius} ${radius} 0 ${pct>0.5?1:0} 1 ${cx+radius*Math.cos(a)} ${cy+radius*Math.sin(a)} L ${cx} ${cy} Z`
+              }
+              return (
+                <div>
+                  <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,background:C.s2,border:`1px solid ${C.border}`,borderRadius:12,padding:'14px'}}>
+                    <svg width="120" height="120" style={{flexShrink:0}}>
+                      <circle cx={cx} cy={cy} r={radius} fill={C.s3}/>
+                      {totalEfectivo>0&&<path d={arc(r1)} fill={C.green} opacity="0.9"/>}
+                      {totalTarjeta>0&&totalV>0&&(()=>{
+                        const startA = r1*2*Math.PI - Math.PI/2
+                        const endA   = (r1 + totalTarjeta/totalV)*2*Math.PI - Math.PI/2
+                        const laf    = totalTarjeta/totalV>0.5?1:0
+                        const d = `M ${cx+radius*Math.cos(startA)} ${cy+radius*Math.sin(startA)} A ${radius} ${radius} 0 ${laf} 1 ${cx+radius*Math.cos(endA)} ${cy+radius*Math.sin(endA)} L ${cx} ${cy} Z`
+                        return <path d={d} fill={C.accent} opacity="0.9"/>
+                      })()}
+                      <circle cx={cx} cy={cy} r={30} fill={C.s2}/>
+                      <text x={cx} y={cy+4} textAnchor="middle" fontSize="11" fontWeight="700" fill={C.text}>{ventas.length}</text>
+                      <text x={cx} y={cy+16} textAnchor="middle" fontSize="8" fill={C.text2}>tickets</text>
+                    </svg>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
+                        <span style={{width:10,height:10,borderRadius:'50%',background:C.green,display:'inline-block'}}></span>
+                        <span style={{fontSize:11,color:C.text2}}>Efectivo</span>
+                        <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.green,fontSize:12}}>{fmtN(totalEfectivo)} €</span>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
+                        <span style={{width:10,height:10,borderRadius:'50%',background:C.accent,display:'inline-block'}}></span>
+                        <span style={{fontSize:11,color:C.text2}}>Tarjeta</span>
+                        <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.accent,fontSize:12}}>{fmtN(totalTarjeta)} €</span>
+                      </div>
+                      {rects.length>0&&<div style={{fontSize:10,color:C.red,marginTop:4}}>↩️ {rects.length} rectificativo(s)</div>}
+                      <div style={{borderTop:`1px solid ${C.border}`,paddingTop:6,marginTop:6,fontFamily:'monospace',fontWeight:800,fontSize:14,color:C.text}}>Total: {fmtN(totalV)} €</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column' as const,gap:8}}>
+                    {sales.map(s=>(
+                      <div key={s.id} onClick={()=>setTicketModal(s)} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'11px 13px',cursor:'pointer'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                          <span style={{fontFamily:'monospace',fontSize:12,fontWeight:700,color:s.type==='rectificativo'?C.red:C.accent}}>{s.ticket_id}</span>
+                          <span style={{fontSize:14,fontWeight:700,color:s.type==='rectificativo'?C.red:C.green,fontFamily:'monospace'}}>{s.type==='rectificativo'?'−':''}{fmtN(Math.abs(parseFloat(s.total)))} €</span>
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:C.text2}}>
+                          <span>{s.date} {s.time}</span>
+                          <span>{s.pay==='efectivo'?'💵':'💳'} {s.cashier_name}</span>
+                        </div>
+                        <div style={{fontSize:10,color:C.text3,marginTop:3,textAlign:'right' as const}}>👁 Ver ticket</div>
+                      </div>
+                    ))}
+                    {!sales.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:30}}>Sin ventas</div>}
+                  </div>
                 </div>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:C.text2}}>
-                  <span>{s.date} {s.time}</span>
-                  <span>{s.pay==='efectivo'?'💵':'💳'} {s.cashier_name}</span>
-                </div>
-                <div style={{fontSize:10,color:C.text3,marginTop:4,textAlign:'right' as const}}>👁 Ver ticket</div>
+              )
+            })()}
+
+            {/* ── CAJA ── */}
+            {histTab==='caja'&&(
+              <div style={{display:'flex',flexDirection:'column' as const,gap:10}}>
+                {cajaList.map((r:any)=>{
+                  const dif = parseFloat(r.diferencia||0)
+                  const difColor = dif===0?C.green:dif>0?C.teal:C.red
+                  return (
+                    <div key={r.id} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:12,padding:'13px'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:13}}>{r.status==='abierto'?'🟢 Abierta':'🔴 Cerrada'}</div>
+                          <div style={{fontSize:11,color:C.text2}}>{r.opened_by_name} · {r.opened_at?new Date(r.opened_at).toLocaleDateString('es-ES'):''}</div>
+                        </div>
+                        <div style={{textAlign:'right' as const}}>
+                          <div style={{fontFamily:'monospace',fontWeight:800,fontSize:15,color:difColor}}>
+                            {dif===0?'✓':dif>0?`+${fmtN(dif)}`:fmtN(dif)} €
+                          </div>
+                          <div style={{fontSize:9,color:C.text3}}>{dif===0?'cuadrada':dif>0?'sobrante':'faltante'}</div>
+                        </div>
+                      </div>
+                      {r.status==='cerrado'&&(
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+                          {[
+                            ['Fondo',fmtN(parseFloat(r.fondo_inicial||0)),C.text],
+                            ['Ventas ef.',fmtN(parseFloat(r.ventas_efectivo||0)),C.green],
+                            ['Esperado',fmtN(parseFloat(r.esperado||0)),C.text],
+                            ['Real',fmtN(parseFloat(r.real_contado||0)),difColor],
+                            ['Tarjeta',fmtN(parseFloat(r.ventas_tarjeta||0)),C.accent],
+                            ['REBU',`-${fmtN(parseFloat(r.rebu_pagado||0))}`,C.red],
+                          ].map(([l,v,c])=>(
+                            <div key={l as string} style={{background:C.s3,borderRadius:6,padding:'5px 8px',textAlign:'center' as const}}>
+                              <div style={{fontSize:8,color:C.text3,marginBottom:1}}>{l}</div>
+                              <div style={{fontFamily:'monospace',fontWeight:700,fontSize:11,color:c as string}}>{v} €</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+                {!cajaList.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:30}}>Sin arqueos</div>}
               </div>
-            ))}
-            {!sales.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:30}}>Sin ventas</div>}
+            )}
+
+            {/* ── COMPRAS ── */}
+            {histTab==='compras'&&(()=>{
+              const totalFacturas = comprasList.reduce((a:number,b:any)=>a+parseFloat(b.invoice_total||0),0)
+              const totalRebu = rebuList.reduce((a:number,b:any)=>a+parseFloat(b.buy_price||0),0)
+              const total = totalFacturas + totalRebu
+              const r1 = total>0?totalRebu/total:0
+              const cx=50,cy=50,radius=42
+              const arc2 = (pct: number, start: number) => {
+                if(pct<=0) return ''
+                if(pct>=1) return `M ${cx} ${cy-radius} A ${radius} ${radius} 0 1 1 ${cx-0.01} ${cy-radius} Z`
+                const a0 = start*2*Math.PI - Math.PI/2
+                const a1 = (start+pct)*2*Math.PI - Math.PI/2
+                return `M ${cx+radius*Math.cos(a0)} ${cy+radius*Math.sin(a0)} A ${radius} ${radius} 0 ${pct>0.5?1:0} 1 ${cx+radius*Math.cos(a1)} ${cy+radius*Math.sin(a1)} L ${cx} ${cy} Z`
+              }
+              return (
+                <div>
+                  {total>0&&(
+                    <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,background:C.s2,border:`1px solid ${C.border}`,borderRadius:12,padding:'14px'}}>
+                      <svg width="100" height="100" style={{flexShrink:0}}>
+                        <circle cx={cx} cy={cy} r={radius} fill={C.s3}/>
+                        {totalRebu>0&&<path d={arc2(r1,0)} fill={C.teal} opacity="0.9"/>}
+                        {totalFacturas>0&&<path d={arc2(totalFacturas/total,r1)} fill={C.amber} opacity="0.9"/>}
+                        <circle cx={cx} cy={cy} r={22} fill={C.s2}/>
+                        <text x={cx} y={cy+4} textAnchor="middle" fontSize="10" fontWeight="700" fill={C.text}>{fmtN(total)}</text>
+                        <text x={cx} y={cy+14} textAnchor="middle" fontSize="7" fill={C.text2}>€</text>
+                      </svg>
+                      <div style={{flex:1}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                          <span style={{width:10,height:10,borderRadius:'50%',background:C.teal,display:'inline-block'}}></span>
+                          <span style={{fontSize:11,color:C.text2}}>REBU ({rebuList.length})</span>
+                          <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.teal,fontSize:11}}>{fmtN(totalRebu)} €</span>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{width:10,height:10,borderRadius:'50%',background:C.amber,display:'inline-block'}}></span>
+                          <span style={{fontSize:11,color:C.text2}}>Facturas ({comprasList.length})</span>
+                          <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.amber,fontSize:11}}>{fmtN(totalFacturas)} €</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{fontSize:11,fontWeight:700,color:C.text2,marginBottom:8,textTransform:'uppercase' as const,letterSpacing:'.05em'}}>♻️ Compras REBU</div>
+                  <div style={{display:'flex',flexDirection:'column' as const,gap:7,marginBottom:14}}>
+                    {rebuList.map((r:any)=>(
+                      <div key={r.id} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 12px'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:12}}>{r.ref}</div>
+                            <div style={{fontSize:11,color:C.text2}}>{r.description}</div>
+                            <div style={{fontSize:10,color:C.text3}}>{r.seller_name} · {r.seller_dni}</div>
+                          </div>
+                          <div style={{textAlign:'right' as const}}>
+                            <div style={{fontFamily:'monospace',fontWeight:700,color:C.teal,fontSize:13}}>{fmtN(parseFloat(r.buy_price))} €</div>
+                            <div style={{fontSize:9,color:C.text3}}>compra</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {!rebuList.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:20}}>Sin compras REBU</div>}
+                  </div>
+                  <div style={{fontSize:11,fontWeight:700,color:C.text2,marginBottom:8,textTransform:'uppercase' as const,letterSpacing:'.05em'}}>📄 Facturas proveedores</div>
+                  <div style={{display:'flex',flexDirection:'column' as const,gap:7}}>
+                    {comprasList.map((r:any)=>(
+                      <div key={r.id} style={{background:C.s2,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 12px'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:12}}>{r.ref}</div>
+                            <div style={{fontSize:11,color:C.text2}}>{r.supplier_name}</div>
+                            <div style={{fontSize:10,color:C.text3}}>{r.invoice_date}</div>
+                          </div>
+                          <div style={{fontFamily:'monospace',fontWeight:700,color:C.amber,fontSize:13}}>{fmtN(parseFloat(r.invoice_total||0))} €</div>
+                        </div>
+                      </div>
+                    ))}
+                    {!comprasList.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:20}}>Sin facturas</div>}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* ── RESERVAS ── */}
+            {histTab==='reservas'&&(()=>{
+              const activas   = reservasList.filter((r:any)=>r.status==='activa')
+              const vencidas  = reservasList.filter((r:any)=>r.status==='vencida')
+              const totalAbonado  = activas.reduce((a:number,b:any)=>a+parseFloat(b.abono||0),0)
+              const totalPendiente= activas.reduce((a:number,b:any)=>a+(parseFloat(b.price)*b.qty-parseFloat(b.abono||0)),0)
+              const total = totalAbonado+totalPendiente
+              const cx=50,cy=50,radius=42
+              const pctAb = total>0?totalAbonado/total:0
+              const arcR = (pct: number, start: number) => {
+                if(pct<=0) return ''
+                if(pct>=1) return `M ${cx} ${cy-radius} A ${radius} ${radius} 0 1 1 ${cx-0.01} ${cy-radius} Z`
+                const a0 = start*2*Math.PI - Math.PI/2
+                const a1 = (start+pct)*2*Math.PI - Math.PI/2
+                return `M ${cx+radius*Math.cos(a0)} ${cy+radius*Math.sin(a0)} A ${radius} ${radius} 0 ${pct>0.5?1:0} 1 ${cx+radius*Math.cos(a1)} ${cy+radius*Math.sin(a1)} L ${cx} ${cy} Z`
+              }
+              return (
+                <div>
+                  {activas.length>0&&(
+                    <div style={{display:'flex',alignItems:'center',gap:16,marginBottom:16,background:C.s2,border:`1px solid ${C.border}`,borderRadius:12,padding:'14px'}}>
+                      <svg width="100" height="100" style={{flexShrink:0}}>
+                        <circle cx={cx} cy={cy} r={radius} fill={C.s3}/>
+                        {totalAbonado>0&&<path d={arcR(pctAb,0)} fill={C.green} opacity="0.9"/>}
+                        {totalPendiente>0&&<path d={arcR(1-pctAb,pctAb)} fill={C.amber} opacity="0.9"/>}
+                        <circle cx={cx} cy={cy} r={22} fill={C.s2}/>
+                        <text x={cx} y={cy+4} textAnchor="middle" fontSize="10" fontWeight="700" fill={C.text}>{activas.length}</text>
+                        <text x={cx} y={cy+14} textAnchor="middle" fontSize="7" fill={C.text2}>activas</text>
+                      </svg>
+                      <div style={{flex:1}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+                          <span style={{width:10,height:10,borderRadius:'50%',background:C.green,display:'inline-block'}}></span>
+                          <span style={{fontSize:11,color:C.text2}}>Abonado</span>
+                          <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.green,fontSize:11}}>{fmtN(totalAbonado)} €</span>
+                        </div>
+                        <div style={{display:'flex',alignItems:'center',gap:6}}>
+                          <span style={{width:10,height:10,borderRadius:'50%',background:C.amber,display:'inline-block'}}></span>
+                          <span style={{fontSize:11,color:C.text2}}>Pendiente</span>
+                          <span style={{marginLeft:'auto',fontFamily:'monospace',fontWeight:700,color:C.amber,fontSize:11}}>{fmtN(totalPendiente)} €</span>
+                        </div>
+                        {vencidas.length>0&&<div style={{fontSize:10,color:C.red,marginTop:6}}>⚠️ {vencidas.length} vencida(s)</div>}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{display:'flex',flexDirection:'column' as const,gap:8}}>
+                    {reservasList.map((r:any)=>{
+                      const pendiente = parseFloat(r.price)*r.qty - parseFloat(r.abono||0)
+                      const isVencida = r.status==='vencida'
+                      return (
+                        <div key={r.id} style={{background:C.s2,border:`1px solid ${isVencida?C.red:C.border}`,borderRadius:10,padding:'11px 13px'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                            <div>
+                              <div style={{fontWeight:600,fontSize:12}}>{r.product_emoji} {r.product_name}</div>
+                              <div style={{fontSize:11,color:C.text2}}>👤 {r.clients?.name}</div>
+                            </div>
+                            <div style={{textAlign:'right' as const}}>
+                              {isVencida&&<div style={{fontSize:9,color:C.red,fontWeight:700,marginBottom:2}}>⚠️ VENCIDA</div>}
+                              <div style={{fontFamily:'monospace',fontWeight:700,color:C.accent,fontSize:13}}>{fmtN(parseFloat(r.price)*r.qty)} €</div>
+                            </div>
+                          </div>
+                          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:5}}>
+                            <div style={{background:C.s3,borderRadius:6,padding:'4px 6px',textAlign:'center' as const}}>
+                              <div style={{fontSize:8,color:C.text3}}>Abonado</div>
+                              <div style={{fontSize:11,fontWeight:700,color:C.green,fontFamily:'monospace'}}>{fmtN(parseFloat(r.abono||0))} €</div>
+                            </div>
+                            <div style={{background:C.s3,borderRadius:6,padding:'4px 6px',textAlign:'center' as const}}>
+                              <div style={{fontSize:8,color:C.text3}}>Pendiente</div>
+                              <div style={{fontSize:11,fontWeight:700,color:C.amber,fontFamily:'monospace'}}>{fmtN(pendiente)} €</div>
+                            </div>
+                            <div style={{background:C.s3,borderRadius:6,padding:'4px 6px',textAlign:'center' as const}}>
+                              <div style={{fontSize:8,color:C.text3}}>Plazo</div>
+                              <div style={{fontSize:10,fontWeight:700,color:isVencida?C.red:C.text}}>{r.plazo_fecha}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {!reservasList.length&&<div style={{textAlign:'center' as const,color:C.text3,padding:30}}>Sin reservas activas</div>}
+                  </div>
+                </div>
+              )
+            })()}
+
           </div>
         </div>
       )}
