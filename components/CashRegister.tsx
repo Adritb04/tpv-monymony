@@ -195,7 +195,10 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
     <h2>Cuadre de caja</h2>
     <div class="box ${diferencia === 0 ? 'ok' : diferencia > 0 ? 'warn' : 'err'}">
       <div class="row"><span>Fondo inicial</span><span>${fmtN(parseFloat(r.fondo_inicial))} €</span></div>
-      <div class="row"><span>+ Ventas efectivo</span><span>${fmtN(parseFloat(r.ventas_efectivo))} €</span></div>
+      <div class="row"><span>+ Ventas efectivo</span><span>+${fmtN(parseFloat(r.ventas_efectivo))} €</span></div>
+      ${parseFloat(r.entradas_manuales||0)>0?`<div class="row"><span>+ Entradas manuales</span><span>+${fmtN(parseFloat(r.entradas_manuales))} €</span></div>`:''}
+      ${parseFloat(r.salidas_manuales||0)>0?`<div class="row"><span>- Salidas manuales</span><span>-${fmtN(parseFloat(r.salidas_manuales))} €</span></div>`:''}
+      ${parseFloat(r.rebu_pagado||0)>0?`<div class="row"><span>- Compras REBU pagadas</span><span>-${fmtN(parseFloat(r.rebu_pagado))} €</span></div>`:''}
       <div class="row total"><span>ESPERADO EN CAJA</span><span>${fmtN(parseFloat(r.esperado))} €</span></div>
       <div class="row" style="margin-top:8px"><span>REAL CONTADO</span><span><b>${fmtN(parseFloat(r.real_contado))} €</b></span></div>
       <div class="row dif" style="margin-top:6px;padding-top:6px;border-top:2px solid #000">
@@ -501,6 +504,7 @@ export default function CashRegister({ token, user, onCajaChange }: CashRegister
                         {[
                           ['Fondo', fmt(parseFloat(r.fondo_inicial)), 'var(--text)'],
                           ['Ventas efect.', fmt(parseFloat(r.ventas_efectivo)), 'var(--green)'],
+                          ...(parseFloat(r.rebu_pagado||0)>0 ? [['REBU pagado', `-${fmt(parseFloat(r.rebu_pagado))}`, 'var(--red)']] : []),
                           ['Esperado', fmt(parseFloat(r.esperado)), 'var(--text)'],
                           ['Real contado', fmt(parseFloat(r.real_contado)), difColor],
                         ].map(([label, val, color]) => (
