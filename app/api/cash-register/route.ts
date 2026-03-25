@@ -89,7 +89,8 @@ export async function POST(req: NextRequest) {
       .select().single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    const label = { entrada:'Entrada', salida:'Salida', gasto:'Gasto', adelanto:'Adelanto' }[type] || type
+    const labels: Record<string, string> = { entrada:'Entrada', salida:'Salida', gasto:'Gasto', adelanto:'Adelanto' }
+    const label = labels[type as string] || type
     await addLog('admin', `${label} de caja`, `${amount}€ — ${concept} · ${auth.name}`, auth)
     return NextResponse.json({ data })
   }

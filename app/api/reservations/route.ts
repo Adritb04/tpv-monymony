@@ -9,6 +9,22 @@ export async function GET(req: NextRequest) {
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status') || 'activa'
+
+  // Auto-expire overdue reservations on each load
+  if (status === 'activa') {
+    const today = new Date().toISOString().split('T')[0]
+    const { data: vencidas } = await supabaseAdmin
+      .from('reservations').select('id, product_id, qty')
+      .eq('status', 'activa').lt('plazo_fecha', today)
+    if (vencidas?.length) {
+      for (const r of vencidas) {
+        const { data: prod } = await supabaseAdmin.from('products').select('stock_reserved').eq('id', r.product_id).single()
+        await supabaseAdmin.from('products').update({ stock_reserved: Math.max(0, (prod?.stock_reserved||0) - r.qty) }).eq('id', r.product_id)
+        await supabaseAdmin.from('reservations').update({ status: 'vencida' }).eq('id', r.id)
+      }
+    }
+  }
+
   const { data, error } = await supabaseAdmin
     .from('reservations')
     .select('*, clients(name, phone, dni)')
@@ -79,3 +95,4 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ error: 'Acción no válida' }, { status: 400 })
 }
+
