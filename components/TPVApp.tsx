@@ -606,7 +606,9 @@ export default function TPVApp() {
           line_iva:   lineTotal - lineBase,
         }
       })
-      const res = await api.sales.create(token, { items, pay: payMethod })
+      const entregado = payMethod === 'efectivo' && efectivoEntregado ? parseFloat(efectivoEntregado) : null
+      const cambio = entregado && entregado >= total ? Math.round((entregado - total) * 100) / 100 : null
+      const res = await api.sales.create(token, { items, pay: payMethod, entregado, cambio })
       setCart([])
       setPayMethod('efectivo')
       setEfectivoEntregado('')
