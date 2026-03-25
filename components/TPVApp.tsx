@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { api } from '@/lib/api-client'
 import PurchasesModule from './PurchasesModule'
+import ClientsModule from './ClientsModule'
+import ReservationsModule from './ReservationsModule'
 import MobileTPV from './MobileTPV'
 import CashRegister from './CashRegister'
 import ReportsModule from './ReportsModule'
@@ -166,6 +168,8 @@ export default function TPVApp() {
   const [cajaLoading, setCajaLoading]   = useState(false)
   const [payMethod, setPayMethod] = useState<'efectivo' | 'tarjeta'>('efectivo')
   const [efectivoEntregado, setEfectivoEntregado] = useState('')
+  const [dtoTicket, setDtoTicket]     = useState('')
+  const [dtoTipo, setDtoTipo]         = useState<'eur'|'pct'>('eur')
   const [activeCat, setActiveCat] = useState(0) // 0 = all
   const [search, setSearch]       = useState('')
   const [loading, setLoading]     = useState(false)
@@ -178,7 +182,7 @@ export default function TPVApp() {
   const [typeFilter, setTypeFilter] = useState('')
 
   // Admin
-  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'compras' | 'informes'>('products')
+  const [adminTab, setAdminTab]   = useState<'products' | 'categories' | 'users' | 'log' | 'compras' | 'informes' | 'clientes' | 'reservas'>('products')
   const [adminUsers, setAdminUsers] = useState<any[]>([])
   const [opLog, setOpLog]         = useState<any[]>([])
   const [logKey, setLogKey]         = useState(0)
@@ -189,7 +193,7 @@ export default function TPVApp() {
   const [pesoModal, setPesoModal]     = useState<any>(null)  // product selected for kg entry
   const [pesoKg, setPesoKg]           = useState('')
   const [quickModal, setQuickModal]   = useState(false)
-  const [quickForm, setQuickForm]     = useState({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 })
+  const [quickForm, setQuickForm]     = useState({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1, regime:'iva', cost_price:0 })
   const [barcodeBuffer, setBarcodeBuffer] = useState('')
   const [barcodeToast, setBarcodeToast]   = useState<string|null>(null)
   const [rectModal, setRectModal]     = useState<any>(null)
@@ -532,7 +536,7 @@ export default function TPVApp() {
       isQuick: true,
     }])
     setQuickModal(false)
-    setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 })
+    setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1, regime:'iva', cost_price:0 })
   }
 
   const confirmPeso = () => {
@@ -579,7 +583,9 @@ export default function TPVApp() {
     return { base, ivaTotal, total: base + ivaTotal, groups }
   }
 
-  const { base, ivaTotal, total, groups } = calcTotals()
+  const { base, ivaTotal, total: totalBruto, groups } = calcTotals()
+  const dtoAmt = dtoTicket ? (dtoTipo === 'pct' ? totalBruto * (parseFloat(dtoTicket)||0) / 100 : parseFloat(dtoTicket)||0) : 0
+  const total = Math.max(0, totalBruto - dtoAmt)
 
   // ── CHECKOUT ──
   const checkout = async () => {
@@ -816,7 +822,7 @@ ${buildTicketHTML(s)}
           <div style={S.prdPanel}>
             <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', flexShrink:0, display:'flex', gap:8 }}>
               <input style={S.input} placeholder="🔍 Buscar producto o escanea código de barras..." value={search} onChange={e => setSearch(e.target.value)} />
-              <button onClick={() => { setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1 }); setQuickModal(true) }} style={{
+              <button onClick={() => { setQuickForm({ name:'', price:'', iva_rate:21, unit_type:'unidad', qty:1, regime:'iva', cost_price:0 }); setQuickModal(true) }} style={{
                 padding:'8px 12px', borderRadius:6, border:'1px solid var(--amber)', background:'var(--amber-dim)',
                 color:'var(--amber)', cursor:'pointer', fontSize:11, fontWeight:700, fontFamily:'inherit',
                 whiteSpace:'nowrap', flexShrink:0,
@@ -887,27 +893,49 @@ ${buildTicketHTML(s)}
                     <p style={{ fontSize:11, textAlign:'center' }}>Carrito vacío.<br/>Selecciona productos.</p>
                   </div>
                 : cart.map(i => (
-                  <div key={i.id} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:9, display:'flex', alignItems:'center', gap:7 }}>
-                    <span style={{ fontSize:18, flexShrink:0 }}>{i.emoji}</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:11, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{i.name}</div>
-                      <div style={{ fontSize:10, color:'var(--text2)' }}>
-                        {i.unit_type==='kg' ? <span style={{ color:'var(--amber)' }}>{i.label}</span> : <>{fmt(i.price)} · <span style={{ color:i.regime==='rebu'?'var(--teal)':'var(--accent)' }}>{i.regime==='rebu'?'REBU':`IVA ${i.iva_rate}%`}</span></>}
+                  <div key={i.id} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:9, display:'flex', flexDirection:'column', gap:5 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <span style={{ fontSize:18, flexShrink:0 }}>{i.emoji}</span>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:11, fontWeight:600, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{i.name}</div>
+                        <div style={{ fontSize:10, color:'var(--text2)' }}>
+                          <span style={{ color:i.regime==='rebu'?'var(--teal)':'var(--accent)' }}>{i.regime==='rebu'?'REBU':`IVA ${i.iva_rate}%`}</span>
+                        </div>
                       </div>
+                      {i.unit_type === 'kg' ? (
+                        <span style={{ fontSize:11, fontWeight:600, color:'var(--amber)', fontFamily:'monospace' }}>{i.qty} kg</span>
+                      ) : (
+                        <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                          <button onClick={() => chgQty(i.id, -1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
+                          <span style={{ fontSize:12, fontWeight:600, minWidth:16, textAlign:'center', fontFamily:'monospace' }}>{i.qty}</span>
+                          <button onClick={() => chgQty(i.id, 1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
+                        </div>
+                      )}
+                      <span style={{ fontSize:12, fontWeight:700, color:'var(--green)', fontFamily:'monospace', flexShrink:0 }}>{fmt(i.price*i.qty)}</span>
+                      <button onClick={() => setCart(prev => prev.filter(x => x.id !== i.id))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:12, padding:2 }}>✕</button>
                     </div>
-                    {i.unit_type === 'kg' ? (
-                      <span style={{ fontSize:11, fontWeight:600, color:'var(--amber)', fontFamily:'monospace', minWidth:50, textAlign:'center' }}>
-                        {i.qty} kg
-                      </span>
-                    ) : (
-                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                        <button onClick={() => chgQty(i.id, -1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>−</button>
-                        <span style={{ fontSize:12, fontWeight:600, minWidth:16, textAlign:'center', fontFamily:'monospace' }}>{i.qty}</span>
-                        <button onClick={() => chgQty(i.id, 1)} style={{ width:20, height:20, borderRadius:4, border:'1px solid var(--border)', background:'var(--s3)', color:'var(--text)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>+</button>
-                      </div>
-                    )}
-                    <span style={{ fontSize:12, fontWeight:700, color:'var(--green)', fontFamily:'monospace', flexShrink:0 }}>{fmt(i.price*i.qty)}</span>
-                    <button onClick={() => setCart(prev => prev.filter(x => x.id !== i.id))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text3)', fontSize:12, padding:2 }}>✕</button>
+                    {/* Price editing row */}
+                    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                      <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0 }}>Precio u.:</span>
+                      <input
+                        style={{ flex:1, background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'3px 6px', color:'var(--text)', fontFamily:'monospace', fontSize:11, outline:'none' }}
+                        type="number" step="0.01" min="0"
+                        value={i.price}
+                        onChange={e => setCart(prev => prev.map(x => x.id===i.id ? {...x, price: parseFloat(e.target.value)||0} : x))}
+                      />
+                      <span style={{ fontSize:9, color:'var(--text3)', flexShrink:0 }}>Dto%:</span>
+                      <input
+                        style={{ width:45, background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'3px 6px', color:'var(--red)', fontFamily:'monospace', fontSize:11, outline:'none' }}
+                        type="number" step="1" min="0" max="100"
+                        value={i.dto||''}
+                        placeholder="0"
+                        onChange={e => {
+                          const dto = parseFloat(e.target.value)||0
+                          const basePrice = i.originalPrice || i.price
+                          setCart(prev => prev.map(x => x.id===i.id ? {...x, dto, originalPrice: x.originalPrice||x.price, price: basePrice*(1-dto/100)} : x))
+                        }}
+                      />
+                    </div>
                   </div>
                 ))
               }
@@ -1000,7 +1028,27 @@ ${buildTicketHTML(s)}
                 {loading ? '...' : (user.role === 'cajero' && cajaChecked && !openCaja) ? '🔴 Abre la caja primero' : cart.length ? `Cobrar ${fmt(total)}` : 'Cobrar'}
               </button>
               {cart.length > 0 && (
-                <button onClick={() => setCart([])} style={{ ...S.btnOutline, width:'100%', marginTop:5, fontSize:11 }}>Vaciar carrito</button>
+                <div>
+                  <div style={{ display:'flex', gap:5, marginTop:8, marginBottom:4 }}>
+                    <select value={dtoTipo} onChange={e=>setDtoTipo(e.target.value as 'eur'|'pct')}
+                      style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'5px 8px', color:'var(--text)', fontFamily:'inherit', fontSize:11, cursor:'pointer' }}>
+                      <option value="eur">Dto €</option>
+                      <option value="pct">Dto %</option>
+                    </select>
+                    <input style={{ ...S.input, fontSize:13, padding:'5px 8px' }}
+                      type="number" min="0" step="0.01"
+                      value={dtoTicket} onChange={e=>setDtoTicket(e.target.value)}
+                      placeholder={dtoTipo==='pct'?'% descuento':'€ descuento'} />
+                    {dtoTicket && <button onClick={()=>setDtoTicket('')} style={{ ...S.btnOutline, fontSize:11, padding:'5px 8px', color:'var(--red)' }}>✕</button>}
+                  </div>
+                  {dtoAmt > 0 && (
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, color:'var(--red)', marginBottom:4 }}>
+                      <span>Descuento {dtoTipo==='pct'?`${dtoTicket}%`:''}</span>
+                      <span style={{ fontFamily:'monospace' }}>−{fmt(dtoAmt)}</span>
+                    </div>
+                  )}
+                  <button onClick={() => { setCart([]); setDtoTicket('') }} style={{ ...S.btnOutline, width:'100%', marginTop:4, fontSize:11 }}>Vaciar carrito</button>
+                </div>
               )}
               {/* Cerrar caja button */}
               {openCaja && (
@@ -1115,9 +1163,11 @@ ${buildTicketHTML(s)}
               ['users','👥','Usuarios'],
               ['log','📜','Log operaciones'],
               ['compras','🛒','Compras'],
+              ['clientes','👥','Clientes'],
+              ['reservas','📋','Reservas'],
               ['informes','📊','Informes'],
             ] as [typeof adminTab, string, string][]).filter(([tab]) => {
-              if (user.role === 'cajero') return ['products', 'compras'].includes(tab)
+              if (user.role === 'cajero') return ['products', 'compras', 'clientes', 'reservas'].includes(tab)
               if (user.role === 'encargado') return ['products','compras','informes'].includes(tab)
               return true // admin sees all
             }).map(([tab, icon, label]) => (
@@ -1244,6 +1294,12 @@ ${buildTicketHTML(s)}
             {/* Integrity tab */}
             {adminTab === 'compras' && (
               <PurchasesModule token={token!} categories={categories} />
+            )}
+            {adminTab === 'clientes' && (
+              <ClientsModule token={token!} />
+            )}
+            {adminTab === 'reservas' && (
+              <ReservationsModule token={token!} user={user} />
             )}
 
             {adminTab === 'informes' && (
@@ -1477,20 +1533,36 @@ ${buildTicketHTML(s)}
                 </div>
               </div>
 
-              {/* IVA */}
+              {/* IVA / REBU */}
               <div>
-                <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>IVA</label>
+                <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>Régimen fiscal</label>
                 <div style={{ display:'flex', gap:5 }}>
                   {([4,10,21] as number[]).map(r => (
-                    <button key={r} type="button" onClick={() => setQuickForm(f => ({...f, iva_rate:r}))}
-                      style={{ flex:1, padding:'7px 4px', borderRadius:6, border:`1px solid ${quickForm.iva_rate===r?'var(--accent)':'var(--border)'}`,
-                        background: quickForm.iva_rate===r?'var(--accent-dim)':'var(--s2)',
-                        color: quickForm.iva_rate===r?'var(--accent)':'var(--text2)',
+                    <button key={r} type="button" onClick={() => setQuickForm(f => ({...f, iva_rate:r, regime:'iva'}))}
+                      style={{ flex:1, padding:'7px 4px', borderRadius:6, border:`1px solid ${quickForm.iva_rate===r&&quickForm.regime!=='rebu'?'var(--accent)':'var(--border)'}`,
+                        background: quickForm.iva_rate===r&&quickForm.regime!=='rebu'?'var(--accent-dim)':'var(--s2)',
+                        color: quickForm.iva_rate===r&&quickForm.regime!=='rebu'?'var(--accent)':'var(--text2)',
                         cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit' }}>
                       {r}%
                     </button>
                   ))}
+                  <button type="button" onClick={() => setQuickForm(f => ({...f, regime:'rebu', iva_rate:21}))}
+                    style={{ flex:1, padding:'7px 4px', borderRadius:6, border:`1px solid ${quickForm.regime==='rebu'?'var(--teal)':'var(--border)'}`,
+                      background: quickForm.regime==='rebu'?'var(--teal-dim)':'var(--s2)',
+                      color: quickForm.regime==='rebu'?'var(--teal)':'var(--text2)',
+                      cursor:'pointer', fontSize:11, fontWeight:600, fontFamily:'inherit' }}>
+                    REBU
+                  </button>
                 </div>
+                {quickForm.regime === 'rebu' && (
+                  <div style={{ marginTop:8 }}>
+                    <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:5 }}>Precio de coste (€) — REBU</label>
+                    <input style={S.input} type="number" step="0.01" min="0"
+                      value={quickForm.cost_price||''}
+                      onChange={e => setQuickForm(f => ({...f, cost_price:parseFloat(e.target.value)||0}))}
+                      placeholder="0.00" />
+                  </div>
+                )}
               </div>
 
               {/* Preview total */}
