@@ -99,6 +99,8 @@ ${(ivaLines || rebuNote) ? '<div class="divider"></div>' : ''}
 <div class="divider-solid"></div>
 <div class="row total">${isRect ? '** TOTAL RECTIFICADO **' : 'TOTAL'} ${isRect ? '-' : ''}${fmtN(Math.abs(s.total))} EUR</div>
 <div class="row small"><span>Pago</span><span>${s.pay === 'efectivo' ? 'Efectivo' : 'Tarjeta'}</span></div>
+${s.entregado ? `<div class="row small"><span>Entregado</span><span>${parseFloat(s.entregado).toFixed(2).replace('.',',')} EUR</span></div>` : ''}
+${s.cambio != null && s.cambio >= 0 ? `<div class="row small bold"><span>** Cambio **</span><span>${parseFloat(s.cambio).toFixed(2).replace('.',',')} EUR</span></div>` : ''}
 <div class="divider"></div>
 <div class="small">${s.sw_name || 'TPV-Legal-ES'} v${s.sw_version || '1.0.0'}</div>
 <div class="hash">Hash: ${(s.hash || '').substring(0, 32)}...</div>

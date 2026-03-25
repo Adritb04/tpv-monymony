@@ -84,6 +84,8 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const items: SaleItem[] = body.items
   const pay: string = body.pay || 'efectivo'
+  const entregado: number | null = body.entregado || null
+  const cambio: number | null = body.cambio ?? null
 
   if (!items?.length) return NextResponse.json({ error: 'Carrito vacío' }, { status: 400 })
 
@@ -125,6 +127,8 @@ export async function POST(req: NextRequest) {
     iva_total:     totalIva,
     total,
     pay,
+    entregado,
+    cambio,
     cashier_id:   auth.userId,
     cashier_name: auth.name,
     nif:          NEGOCIO.nif,
