@@ -47,6 +47,9 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
   const [suppliers, setSuppliers] = useState<any[]>([])
   const [supForm, setSupForm]   = useState<any>({})
   const [products, setProducts] = useState<any[]>([])
+  const [rebuClientSearch, setRebuClientSearch] = useState('')
+  const [rebuClientResults, setRebuClientResults] = useState<any[]>([])
+  const [rebuAddToCatalog, setRebuAddToCatalog] = useState(false)
 
   const showToast = (msg: string, ok = true) => { setToast({msg,ok}); setTimeout(()=>setToast(null),3000) }
 
@@ -66,6 +69,20 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
 
   const saveSuppliers = (list: any[]) => { setSuppliers(list); localStorage.setItem('tpv_suppliers',JSON.stringify(list)) }
   const setF = (k: string, v: any) => setForm((p:any)=>({...p,[k]:v}))
+
+  const searchRebuClients = async (q: string) => {
+    setRebuClientSearch(q)
+    if (q.length < 2) { setRebuClientResults([]); return }
+    const r = await fetch(`/api/clients?q=${encodeURIComponent(q)}`, { headers:{ Authorization:`Bearer ${token}` } })
+    const j = await r.json()
+    setRebuClientResults(j.data || [])
+  }
+
+  const selectRebuClient = (c: any) => {
+    setF('seller_name', c.name); setF('seller_dni', c.dni || '')
+    setF('seller_phone', c.phone || ''); setF('client_id', c.id)
+    setRebuClientSearch(c.name); setRebuClientResults([])
+  }
   const setItem = (idx: number, k: string, v: any) => setItems(prev=>prev.map((it,i)=>i===idx?{...it,[k]:v}:it))
 
   const pickProduct = (idx: number, productId: string) => {
@@ -94,10 +111,12 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
     if (!form.seller_name||!form.seller_dni||!form.description||!form.buy_price||!form.sale_price) return showToast('Completa todos los campos obligatorios',false)
     setLoading(true)
     try {
-      const r = await fetch('/api/rebu-purchases',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(form)})
+      const payload = { ...form, add_to_catalog: rebuAddToCatalog }
+      const r = await fetch('/api/rebu-purchases',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(payload)})
       const j = await r.json(); if (!r.ok) throw new Error(j.error)
-      showToast(`✓ ${j.data.purchase.ref} registrado`); printRebuPDF(j.data.purchase)
-      setModal(null); setForm({}); load()
+      showToast(`✓ ${j.data.purchase.ref} registrado${rebuAddToCatalog?' — añadido al catálogo':''}`)
+      printRebuPDF(j.data.purchase)
+      setModal(null); setForm({}); setRebuClientSearch(''); setRebuClientResults([]); setRebuAddToCatalog(false); load()
     } catch(e:any){showToast(e.message,false)} finally{setLoading(false)}
   }
 
@@ -396,6 +415,26 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
             <p style={{color:'var(--text2)',fontSize:11,marginBottom:16}}>Compra a particular — DNI obligatorio (Art. 135-139 LIVA)</p>
             <div style={sectionStyle}>
               <div style={sTitleStyle('var(--teal)')}>👤 Vendedor (particular)</div>
+              <div style={{position:'relative',marginBottom:10}}>
+                <label style={S.label}>Buscar cliente registrado</label>
+                <input style={S.input} value={rebuClientSearch} onChange={e=>searchRebuClients(e.target.value)} placeholder="Buscar por nombre o DNI..." />
+                {rebuClientResults.length>0&&(
+                  <div style={{position:'absolute',top:'100%',left:0,right:0,background:'var(--s1)',border:'1px solid var(--border)',borderRadius:8,zIndex:10,maxHeight:160,overflowY:'auto' as const,boxShadow:'0 8px 24px rgba(0,0,0,.4)'}}>
+                    {rebuClientResults.map((c:any)=>(
+                      <div key={c.id} onClick={()=>selectRebuClient(c)}
+                        style={{padding:'10px 14px',cursor:'pointer',borderBottom:'1px solid var(--border)',fontSize:13}}
+                        onMouseEnter={e=>(e.currentTarget.style.background='var(--s2)')}
+                        onMouseLeave={e=>(e.currentTarget.style.background='transparent')}>
+                        <span style={{fontWeight:600}}>{c.name}</span>
+                        {c.dni&&<span style={{color:'var(--text2)',marginLeft:8,fontSize:11}}>{c.dni}</span>}
+                        {c.phone&&<span style={{color:'var(--text2)',marginLeft:8,fontSize:11}}>{c.phone}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {form.client_id&&<div style={{fontSize:10,color:'var(--green)',marginTop:3}}>✓ Cliente de la base de datos seleccionado</div>}
+              </div>
+              <div style={{fontSize:10,color:'var(--text2)',marginBottom:10,textAlign:'center' as const}}>— o rellena manualmente —</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
                 <div><label style={S.label}>Nombre completo *</label><input style={S.input} value={form.seller_name||''} onChange={e=>setF('seller_name',e.target.value)} /></div>
                 <div><label style={S.label}>DNI / NIE *</label><input style={S.input} value={form.seller_dni||''} onChange={e=>setF('seller_dni',e.target.value)} placeholder="12345678A" /></div>
@@ -413,6 +452,10 @@ export default function PurchasesModule({ token, categories }: PurchasesModulePr
                 <div><label style={S.label}>Precio venta prev. (€) *</label><input style={S.input} type="number" step="0.01" min="0" value={form.sale_price||''} onChange={e=>setF('sale_price',parseFloat(e.target.value))} /></div>
               </div>
               {form.buy_price>0&&form.sale_price>0&&(<div style={{marginTop:8,fontSize:11,color:'var(--text2)',background:'var(--s3)',padding:'6px 10px',borderRadius:6}}>Margen: <b style={{color:'var(--green)'}}>{fmtN(form.sale_price-form.buy_price)} €</b> · IVA s/margen: <b style={{color:'var(--amber)'}}>{fmtN((form.sale_price-form.buy_price)*21/121)} €</b></div>)}
+            </div>
+            <div style={{marginBottom:10,display:'flex',alignItems:'center',gap:10,padding:'8px 10px',background:'var(--s3)',borderRadius:8}}>
+              <input type="checkbox" id="add-catalog-rebu" checked={rebuAddToCatalog} onChange={e=>setRebuAddToCatalog(e.target.checked)} style={{width:16,height:16,cursor:'pointer'}} />
+              <label htmlFor="add-catalog-rebu" style={{fontSize:12,cursor:'pointer',color:'var(--text)'}}>📦 Añadir al catálogo de productos automáticamente</label>
             </div>
             <div style={{marginBottom:14}}><label style={S.label}>Observaciones</label><input style={S.input} value={form.notes||''} onChange={e=>setF('notes',e.target.value)} /></div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
