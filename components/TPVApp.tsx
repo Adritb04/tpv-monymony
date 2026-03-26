@@ -309,6 +309,21 @@ export default function TPVApp() {
   }
 
   // ── Cierre de caja ──
+  const DENOM_CIERRE = [
+    { value:500, label:'500 €', type:'billete' },{ value:200, label:'200 €', type:'billete' },
+    { value:100, label:'100 €', type:'billete' },{ value:50, label:'50 €', type:'billete' },
+    { value:20, label:'20 €', type:'billete' },{ value:10, label:'10 €', type:'billete' },
+    { value:5, label:'5 €', type:'billete' },
+    { value:2, label:'2 €', type:'moneda' },{ value:1, label:'1 €', type:'moneda' },
+    { value:0.50, label:'0,50 €', type:'moneda' },{ value:0.20, label:'0,20 €', type:'moneda' },
+    { value:0.10, label:'0,10 €', type:'moneda' },{ value:0.05, label:'0,05 €', type:'moneda' },
+    { value:0.02, label:'0,02 €', type:'moneda' },{ value:0.01, label:'0,01 €', type:'moneda' },
+  ]
+  const [cierreCounts, setCierreCounts] = useState<Record<string,string>>({})
+  const totalCierre = DENOM_CIERRE.reduce((sum, d) => {
+    return sum + (parseFloat(cierreCounts[String(d.value)] || '0') || 0) * d.value
+  }, 0)
+
   const doCierre = async () => {
     if (!token || !openCaja) return
     setCajaLoading(true)
@@ -316,14 +331,13 @@ export default function TPVApp() {
       const res = await fetch('/api/cash-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'cierre', apertura_id: openCaja.id, real_contado: parseFloat(realContado) || 0, notes: notasCierre }),
+        body: JSON.stringify({ action: 'cierre', register_id: openCaja.id, real_contado: totalCierre > 0 ? totalCierre : parseFloat(realContado) || 0, notes: notasCierre }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
       showToast('✓ Caja cerrada')
-      setRealContado(''); setNotasCierre(''); setCierreModal(false)
+      setRealContado(''); setNotasCierre(''); setCierreModal(false); setCierreCounts({})
       loadCaja()
-      // Print PDF cierre
       printCierreArqueo(j.data)
     } catch (e: any) { showToast(e.message, 'err') }
     finally { setCajaLoading(false) }
@@ -1735,51 +1749,81 @@ ${buildTicketHTML(s)}
       {/* ── CIERRE CAJA MODAL ── */}
       {cierreModal && openCaja && (
         <div style={{ position:'fixed', inset:0, zIndex:700, background:'rgba(26,29,46,.6)', display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(5px)' }}
-          onClick={e => { if(e.target===e.currentTarget) setCierreModal(false) }}>
-          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:32, width:420, boxShadow:'0 8px 32px rgba(89,122,166,.2)' }}>
-            <div style={{ fontSize:36, textAlign:'center' as const, marginBottom:8 }}>🔴</div>
-            <div style={{ fontSize:18, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Cierre de Caja</div>
-            <div style={{ color:'var(--text2)', fontSize:12, textAlign:'center' as const, marginBottom:20 }}>
+          onClick={e => { if(e.target===e.currentTarget) { setCierreModal(false); setCierreCounts({}) } }}>
+          <div style={{ background:'var(--s1)', border:'1px solid var(--border)', borderRadius:16, padding:28, width:520, maxHeight:'90vh', overflowY:'auto' as const, boxShadow:'0 8px 32px rgba(89,122,166,.2)' }}>
+            <div style={{ fontSize:32, textAlign:'center' as const, marginBottom:6 }}>🔴</div>
+            <div style={{ fontSize:17, fontWeight:700, textAlign:'center' as const, marginBottom:4 }}>Cierre de Caja</div>
+            <div style={{ color:'var(--text2)', fontSize:12, textAlign:'center' as const, marginBottom:16 }}>
               Abierta por {openCaja.opened_by_name} · {openCaja.opened_at ? new Date(openCaja.opened_at).toLocaleString('es-ES') : ''}
             </div>
+            <div style={{ background:'var(--s2)', borderRadius:8, padding:'8px 14px', marginBottom:14, fontSize:12, display:'flex', justifyContent:'space-between' }}>
+              <span style={{ color:'var(--text2)' }}>Fondo inicial</span>
+              <span style={{ fontFamily:'monospace', fontWeight:700 }}>{fmt(parseFloat(openCaja.fondo_inicial))}</span>
+            </div>
 
-            {/* Info apertura */}
-            <div style={{ background:'var(--s2)', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:12 }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
-                <span style={{ color:'var(--text2)' }}>Fondo inicial</span>
-                <span style={{ fontFamily:'monospace', fontWeight:700 }}>{fmt(parseFloat(openCaja.fondo_inicial))}</span>
-              </div>
+            {/* Billetes */}
+            <div style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:6 }}>💵 Billetes</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:5, marginBottom:10 }}>
+              {DENOM_CIERRE.filter(d => d.type==='billete').map(d => (
+                <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:7, padding:'6px 4px', textAlign:'center' as const }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--amber)', marginBottom:3 }}>{d.label}</div>
+                  <input
+                    style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 2px', color:'var(--text)', fontFamily:'monospace', fontSize:13, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                    type="number" min="0" step="1"
+                    value={cierreCounts[String(d.value)]||''}
+                    onChange={e => setCierreCounts(p => ({...p,[String(d.value)]:e.target.value}))}
+                    placeholder="0"
+                  />
+                  {(parseFloat(cierreCounts[String(d.value)]||'0')||0)>0&&(
+                    <div style={{ fontSize:9, color:'var(--green)', marginTop:2, fontFamily:'monospace' }}>
+                      {((parseFloat(cierreCounts[String(d.value)]||'0')||0)*d.value).toFixed(2).replace('.',',')} €
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Monedas */}
+            <div style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', marginBottom:6 }}>🪙 Monedas</div>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:5, marginBottom:10 }}>
+              {DENOM_CIERRE.filter(d => d.type==='moneda').map(d => (
+                <div key={d.value} style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:7, padding:'6px 4px', textAlign:'center' as const }}>
+                  <div style={{ fontSize:10, fontWeight:700, color:'var(--teal)', marginBottom:3 }}>{d.label}</div>
+                  <input
+                    style={{ width:'100%', background:'var(--s1)', border:'1px solid var(--border)', borderRadius:4, padding:'4px 2px', color:'var(--text)', fontFamily:'monospace', fontSize:13, fontWeight:700, textAlign:'center' as const, outline:'none' }}
+                    type="number" min="0" step="1"
+                    value={cierreCounts[String(d.value)]||''}
+                    onChange={e => setCierreCounts(p => ({...p,[String(d.value)]:e.target.value}))}
+                    placeholder="0"
+                  />
+                  {(parseFloat(cierreCounts[String(d.value)]||'0')||0)>0&&(
+                    <div style={{ fontSize:9, color:'var(--green)', marginTop:2, fontFamily:'monospace' }}>
+                      {((parseFloat(cierreCounts[String(d.value)]||'0')||0)*d.value).toFixed(2).replace('.',',')} €
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Total */}
+            <div style={{ background:'var(--green-dim)', border:'1px solid rgba(62,207,142,.3)', borderRadius:10, padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+              <span style={{ fontWeight:700, fontSize:14, color:'var(--green)' }}>💰 Total contado</span>
+              <span style={{ fontFamily:'monospace', fontWeight:800, fontSize:20, color:'var(--green)' }}>{totalCierre.toFixed(2).replace('.',',')} €</span>
             </div>
 
             <div style={{ marginBottom:14 }}>
-              <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
-                Importe real contado en caja (€) *
-              </label>
-              <input
-                style={{ ...S.input, fontSize:24, fontWeight:700, textAlign:'center' as const, fontFamily:'monospace', padding:'12px' }}
-                type="number" step="0.01" min="0"
-                value={realContado}
-                onChange={e => setRealContado(e.target.value)}
-                placeholder="0.00"
-                autoFocus
-              />
-              <div style={{ fontSize:11, color:'var(--text2)', marginTop:5 }}>
-                Cuenta todos los billetes y monedas en la caja ahora
-              </div>
-            </div>
-            <div style={{ marginBottom:20 }}>
               <label style={{ fontSize:10, color:'var(--text2)', fontWeight:600, textTransform:'uppercase' as const, letterSpacing:'.05em', display:'block', marginBottom:6 }}>
                 Observaciones (opcional)
               </label>
               <input style={S.input} value={notasCierre} onChange={e => setNotasCierre(e.target.value)} placeholder="Ej: Sin incidencias" />
             </div>
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => setCierreModal(false)} style={{ ...S.btnOutline, flex:1 }}>Cancelar</button>
-              <button onClick={doCierre} disabled={cajaLoading || !realContado} style={{
+              <button onClick={() => { setCierreModal(false); setCierreCounts({}) }} style={{ ...S.btnOutline, flex:1 }}>Cancelar</button>
+              <button onClick={doCierre} disabled={cajaLoading || totalCierre <= 0} style={{
                 flex:2, padding:12, borderRadius:8, border:'none',
-                background: realContado ? 'var(--red)' : 'var(--s3)',
-                color: realContado ? '#fff' : 'var(--text3)',
-                cursor: realContado ? 'pointer' : 'not-allowed',
+                background: totalCierre > 0 ? 'var(--red)' : 'var(--s3)',
+                color: totalCierre > 0 ? '#fff' : 'var(--text3)',
+                cursor: totalCierre > 0 ? 'pointer' : 'not-allowed',
                 fontSize:14, fontWeight:700, fontFamily:'inherit',
               }}>
                 {cajaLoading ? '...' : '🔴 Cerrar caja y generar PDF'}
