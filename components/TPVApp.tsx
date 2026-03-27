@@ -316,7 +316,7 @@ export default function TPVApp() {
       const res = await fetch('/api/cash-register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'cierre', register_id: openCaja.id, real_contado: totalCierre > 0 ? totalCierre : parseFloat(realContado) || 0, notes: notasCierre }),
+        body: JSON.stringify({ action: 'cierre', register_id: openCaja.id, real_contado: parseFloat(realContado) || 0, notes: notasCierre }),
       })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error)
